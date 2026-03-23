@@ -2,102 +2,129 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Control de Insumos Nativo | Arq. David Lindoro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presupuesto Dinámico - Arq. David Lindoro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --gold: #c5a059; --dark: #1a1a1a; --excel-border: #d4d4d4; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #444; margin: 0; }
-        
-        /* Panel de Control Estilo Dashboard */
-        .dashboard { background: var(--dark); color: white; padding: 20px; position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--gold); }
-        .dashboard h1 { margin: 0 0 15px 0; font-size: 18px; letter-spacing: 2px; text-align: center; font-weight: 300; }
-        .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; max-width: 1300px; margin: auto; }
-        .control-grid div label { display: block; font-size: 9px; color: var(--gold); text-transform: uppercase; margin-bottom: 4px; }
-        .control-grid input { width: 90%; background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 6px; font-size: 13px; border-radius: 3px; outline: none; }
-        .control-grid input:focus { border-color: var(--gold); }
-
-        /* Contenedor del Excel */
-        .excel-sheet { background: white; width: 98%; max-width: 1500px; margin: 20px auto; overflow-x: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        
-        /* Encabezados de Partida (Semanas) */
-        .row-header { background: #f2f2f2; font-weight: bold; color: #333; text-transform: uppercase; font-size: 13px; }
-        .row-header td { padding: 12px; border: 1px solid var(--excel-border); border-left: 6px solid var(--gold); }
-
-        /* Encabezados de Columnas */
-        thead th { background: #e1e1e1; color: #555; font-weight: normal; border: 1px solid var(--excel-border); padding: 5px; font-size: 11px; position: sticky; top: 125px; z-index: 900; }
-        
-        /* Estilo de Celdas */
-        tbody td { border: 1px solid var(--excel-border); padding: 6px 10px; color: #444; }
-        .col-id { background: #f9f9f9; font-family: 'Consolas', monospace; width: 100px; text-align: center; }
-        .col-desc { width: 450px; }
-        .col-unit { width: 60px; text-align: center; }
-        .col-qty { width: 80px; text-align: center; font-weight: bold; }
-        .col-price { width: 110px; text-align: right; background: #fff; }
-        .col-total { width: 130px; text-align: right; background: #fffdf0; font-weight: bold; color: #000; }
-
-        /* Footer de Totales */
-        .footer-total { background: #111; color: white; padding: 30px; text-align: right; border-top: 5px solid var(--gold); }
-        .total-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
-        .total-value { font-size: 40px; color: var(--gold); font-weight: bold; margin-top: 5px; }
-        
-        .btn-wa { background: #25d366; color: white; padding: 15px 30px; border: none; text-decoration: none; display: inline-block; margin-top: 20px; font-weight: bold; border-radius: 4px; }
+        .table-input { border: none; width: 100%; background: transparent; }
+        .table-input:focus { outline: 2px solid #3b82f6; background: white; }
+        tr:nth-child(even) { background-color: #f9fafb; }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 p-8 font-sans">
 
-<div class="dashboard">
-    <h1>REPORTE DE INSUMOS NATIVO - ARQ. DAVID LINDORO</h1>
-    <div class="control-grid">
-        <div><label>Cemento Gris (Ton)</label><input type="number" id="val-cemento" value="5120" oninput="runExcel()"></div>
-        <div><label>Varilla 3/8 (Ton)</label><input type="number" id="val-varilla" value="28450" oninput="runExcel()"></div>
-        <div><label>Armex 10x10 (Pza)</label><input type="number" id="val-armex" value="168.50" oninput="runExcel()"></div>
-        <div><label>Tabique Multi (Pza)</label><input type="number" id="val-tabique" value="12.95" oninput="runExcel()"></div>
-        <div><label>Pétreos m3 (Arena)</label><input type="number" id="val-petreo" value="415" oninput="runExcel()"></div>
-        <div><label>Cocina Tipo B</label><input type="number" id="val-cocina" value="31450" oninput="recalculaTodo()"></div>
+    <div class="max-w-6xl mx-auto bg-white shadow-2xl rounded-lg overflow-hidden">
+        <div class="bg-white border-b p-6 text-center">
+            <h1 class="text-2xl font-bold tracking-widest uppercase">LISTADO DE INSUMOS POR PARTIDA</h1>
+            <p class="text-sm text-gray-500 mt-2">Ciudad de Puebla - Actualización Marzo 2026</p>
+        </div>
+
+        <div class="p-4 overflow-x-auto">
+            <table class="w-full border-collapse border border-gray-300 text-sm">
+                <thead>
+                    <tr class="bg-gray-50 uppercase text-gray-700">
+                        <th class="border border-gray-300 p-2 w-32">Código</th>
+                        <th class="border border-gray-300 p-2">Descripción</th>
+                        <th class="border border-gray-300 p-2 w-20">Unidad</th>
+                        <th class="border border-gray-300 p-2 w-24">Cantidad</th>
+                        <th class="border border-gray-300 p-2 w-32">Costo (MXN)</th>
+                        <th class="border border-gray-300 p-2 w-32">Importe</th>
+                    </tr>
+                </thead>
+                <tbody id="budget-body">
+                    <tr class="bg-gray-100 font-bold"><td class="p-2 border">L</td><td colspan="5" class="p-2 border">Unifamiliar Roof Garden</td></tr>
+                    <tr class="bg-gray-50 font-semibold"><td class="p-2 border">L01</td><td colspan="5" class="p-2 border italic">Semana 1</td></tr>
+                    <tr class="bg-gray-50 font-semibold"><td class="p-2 border">L011</td><td colspan="5" class="p-2 border">Cisterna</td></tr>
+                    
+                    </tbody>
+                <tfoot>
+                    <tr class="bg-gray-200 font-bold">
+                        <td class="border p-2">L011</td>
+                        <td colspan="4" class="border p-2 text-right uppercase">TOTAL Cisterna</td>
+                        <td id="grand-total" class="border p-2 text-blue-800 text-lg">$ 0.00</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="p-6 bg-gray-50 flex gap-4">
+            <button onclick="addRow()" class="bg-black text-white px-6 py-2 rounded shadow hover:bg-gray-800 transition">
+                + Agregar Material
+            </button>
+            <button onclick="window.print()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded shadow hover:bg-gray-300 transition">
+                Imprimir / PDF
+            </button>
+        </div>
     </div>
-</div>
 
-<div class="excel-sheet">
-    <table id="mainTable">
-        <thead>
-            <tr>
-                <th>CÓDIGO</th>
-                <th>DESCRIPCIÓN DEL INSUMO</th>
-                <th>UNID</th>
-                <th>CANT.</th>
-                <th>P. UNITARIO</th>
-                <th>IMPORTE</th>
-            </tr>
-        </thead>
-        <tbody id="excel-body">
-            </tbody>
-    </table>
-</div>
+    <script>
+        // Catálogo de precios 2026 Puebla
+        const catalog = {
+            "MA-ACER-0001": { desc: "ARMEX 10X10-4 DE 6.00 M", unit: "PZA", price: 155.00 },
+            "MA-ACER-0008": { desc: "MALLA ELECTROSOLDADA 6X6/6-6 ROLLO 100M", unit: "ROLLO", price: 4650.00 },
+            "MA-ACER-0010": { desc: "ALAMBRE RECOCIDO CAL.16 (1.59MM)", unit: "KG", price: 34.00 },
+            "MA-ACER-0011": { desc: "CLAVO DE 2 1/2\"", unit: "KG", price: 55.00 },
+            "MA-ACER-0002": { desc: "ARMEX 12X20-4 DE 6.00 M", unit: "PZA", price: 172.00 },
+            "MA-AGLU-0001": { desc: "CALHIDRA SACO DE 25 KG", unit: "TON", price: 3850.00 },
+            "MA-AGLU-0002": { desc: "CEMENTO (GRIS)", unit: "TON", price: 4950.00 },
+            "MA-LOPF-0002": { desc: "BOVEDILLA DE 60X25X16 CM", unit: "PZA", price: 26.00 },
+            "MA-LOPF-0016": { desc: "VIGUETA PRETENZADA PERALTE 11 1.35M", unit: "PZA", price: 245.00 },
+            "MA-MURO-0005": { desc: "TABIQUE RECOCIDO ROJO 24X.06X12CM", unit: "PZA", price: 3.10 }
+        };
 
-<div class="footer-total">
-    <div class="total-label">Inversión Total Actualizada (Puebla 2026)</div>
-    <div id="grand-total" class="total-value">$0.00</div>
-    <a href="#" id="wa-btn" class="btn-wa">Enviar Presupuesto por WhatsApp</a>
-</div>
+        function addRow(code = "", qty = 0) {
+            const tbody = document.getElementById('budget-body');
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td class="border p-1"><input type="text" value="${code}" class="table-input p-1 uppercase" onchange="updateRow(this)" placeholder="Código"></td>
+                <td class="border p-1 text-gray-600"><input type="text" class="table-input p-1" readonly></td>
+                <td class="border p-1 text-center text-gray-600"><input type="text" class="table-input text-center" readonly></td>
+                <td class="border p-1"><input type="number" value="${qty}" class="table-input p-1 text-center font-bold" oninput="calculateTotal()"></td>
+                <td class="border p-1"><input type="number" class="table-input p-1 text-right" oninput="calculateTotal()"></td>
+                <td class="border p-1 text-right font-semibold text-gray-800 bg-gray-50">$ 0.00</td>
+            `;
+            tbody.appendChild(row);
+            if(code) updateRow(row.querySelector('input'));
+        }
 
-<script>
-    // BASE DE DATOS MAESTRA (Aquí se pegan los 557 renglones del Excel)
-    const dbInsumos = [
-        // PARTIDA: CIMENTACIÓN
-        { tipo: 'header', titulo: 'SEMANA 1-2: CIMENTACIÓN Y CISTERNA' },
-        { cod: "MA-ACER-0001", desc: "ARMEX 10X10-4 DE 6.00 M", unid: "PZA", cant: 6, cat: 'armex' },
-        { cod: "MA-ACER-0015", desc: "VARILLA CORRUGADA 3/8", unid: "TON", cant: 0.85, cat: 'varilla' },
-        { cod: "MA-AGLU-0002", desc: "CEMENTO GRIS (PORTLAND)", unid: "TON", cant: 1.1, cat: 'cemento' },
-        { cod: "MA-PETR-0001", desc: "ARENA DE MINA", unid: "M3", cant: 4.5, cat: 'petreo' },
-        
-        // PARTIDA: MUROS
-        { tipo: 'header', titulo: 'SEMANA 3-6: MUROS Y ESTRUCTURA ALTA' },
-        { cod: "MA-MURO-0001", desc: "TABIQUE 10X20X33 MULTIPERFORADO", unid: "PZA", cant: 1250, cat: 'tabique' },
-        { cod: "MA-MURO-0005", desc: "LADRILLO ROJO RECOCIDO", unid: "PZA", cant: 800, cat: 'fijo', p: 6.20 },
-        { cod: "MA-AGLU-0006", desc: "ESTUCO / ADEBLOC PLUS", unid: "TON", cant: 0.45, cat: 'fijo', p: 4250 },
-        
-        // PARTIDA: ACABADOS
-        { tipo: 'header', titulo: 'SEMANA 11-13: ACABADOS Y EQUIPAMIENTO' },
-        { cod: "EQ-COCI-0001", desc: "COCINA INTEGRAL TIPO B", unid: "PZA", cant: 1, cat: 'cocina' },
-        { cod: "MA-MADR-0001", desc: "PUERTAS DE COMUNICACIÓN", unid: "PZA", cant: 3, cat: 'fijo', p: 4950 },
-        { cod: "MA-PISO-0015", desc: "PISO CERÁM
+        function updateRow(input) {
+            const row = input.closest('tr');
+            const data = catalog[input.value.toUpperCase()];
+            if(data) {
+                row.cells[1].querySelector('input').value = data.desc;
+                row.cells[2].querySelector('input').value = data.unit;
+                row.cells[4].querySelector('input').value = data.price;
+            }
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let grandTotal = 0;
+            const rows = document.querySelectorAll('#budget-body tr:not(.bg-gray-100):not(.bg-gray-50)');
+            
+            rows.forEach(row => {
+                const qty = parseFloat(row.cells[3].querySelector('input').value) || 0;
+                const cost = parseFloat(row.cells[4].querySelector('input').value) || 0;
+                const total = qty * cost;
+                row.cells[5].innerText = '$ ' + total.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                grandTotal += total;
+            });
+            
+            document.getElementById('grand-total').innerText = '$ ' + grandTotal.toLocaleString('es-MX', {minimumFractionDigits: 2});
+        }
+
+        // Carga inicial con tus datos de la imagen
+        window.onload = () => {
+            const initialData = [
+                {c: "MA-ACER-0001", q: 6}, {c: "MA-ACER-0008", q: 0.34},
+                {c: "MA-ACER-0010", q: 20}, {c: "MA-ACER-0011", q: 2},
+                {c: "MA-ACER-0002", q: 4}, {c: "MA-AGLU-0001", q: 0.30},
+                {c: "MA-AGLU-0002", q: 2}, {c: "MA-LOPF-0002", q: 44},
+                {c: "MA-LOPF-0016", q: 8}, {c: "MA-MURO-0005", q: 1375}
+            ];
+            initialData.forEach(item => addRow(item.c, item.q));
+        };
+    </script>
+</body>
+</html>
