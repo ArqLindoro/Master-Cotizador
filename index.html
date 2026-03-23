@@ -3,62 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presupuesto Dinámico - Arq. David Lindoro</title>
+    <title>Presupuesto Maestro - Arq. David Lindoro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .table-input { border: none; width: 100%; background: transparent; }
+        .table-input { border: none; width: 100%; background: transparent; padding: 4px; }
         .table-input:focus { outline: 2px solid #3b82f6; background: white; }
         tr:nth-child(even) { background-color: #f9fafb; }
+        @media print { .no-print { display: none; } }
     </style>
 </head>
-<body class="bg-gray-100 p-8 font-sans">
+<body class="bg-gray-100 p-4 md:p-8 font-sans">
 
     <div class="max-w-6xl mx-auto bg-white shadow-2xl rounded-lg overflow-hidden">
-        <div class="bg-white border-b p-6 text-center">
-            <h1 class="text-2xl font-bold tracking-widest uppercase">LISTADO DE INSUMOS POR PARTIDA</h1>
-            <p class="text-sm text-gray-500 mt-2">Ciudad de Puebla - Actualización Marzo 2026</p>
+        <div class="p-6 border-b flex justify-between items-center bg-white">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tighter uppercase text-gray-800">Presupuesto Dinámico 2026</h1>
+                <p class="text-xs text-blue-600 font-semibold uppercase tracking-widest">Arq. David Lindoro Juárez | Puebla, MX</p>
+            </div>
+            <div class="text-right no-print">
+                <span id="save-status" class="text-xs text-green-500 font-medium"></span>
+            </div>
         </div>
 
-        <div class="p-4 overflow-x-auto">
-            <table class="w-full border-collapse border border-gray-300 text-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
                 <thead>
-                    <tr class="bg-gray-50 uppercase text-gray-700">
-                        <th class="border border-gray-300 p-2 w-32">Código</th>
-                        <th class="border border-gray-300 p-2">Descripción</th>
-                        <th class="border border-gray-300 p-2 w-20">Unidad</th>
-                        <th class="border border-gray-300 p-2 w-24">Cantidad</th>
-                        <th class="border border-gray-300 p-2 w-32">Costo (MXN)</th>
-                        <th class="border border-gray-300 p-2 w-32">Importe</th>
+                    <tr class="bg-slate-800 text-white uppercase text-xs">
+                        <th class="p-3 border border-slate-700 w-32 text-left">Código</th>
+                        <th class="p-3 border border-slate-700 text-left">Descripción</th>
+                        <th class="p-3 border border-slate-700 w-20 text-center">Unidad</th>
+                        <th class="p-3 border border-slate-700 w-24 text-center">Cant.</th>
+                        <th class="p-3 border border-slate-700 w-32 text-right">Costo Unit.</th>
+                        <th class="p-3 border border-slate-700 w-32 text-right">Importe</th>
                     </tr>
                 </thead>
                 <tbody id="budget-body">
                     <tr class="bg-gray-100 font-bold"><td class="p-2 border">L</td><td colspan="5" class="p-2 border">Unifamiliar Roof Garden</td></tr>
-                    <tr class="bg-gray-50 font-semibold"><td class="p-2 border">L01</td><td colspan="5" class="p-2 border italic">Semana 1</td></tr>
-                    <tr class="bg-gray-50 font-semibold"><td class="p-2 border">L011</td><td colspan="5" class="p-2 border">Cisterna</td></tr>
-                    
-                    </tbody>
+                    <tr class="bg-gray-50 font-semibold italic"><td class="p-2 border text-gray-400">L01</td><td colspan="5" class="p-2 border uppercase">Semana 1</td></tr>
+                    <tr class="bg-gray-50 font-semibold"><td class="p-2 border text-blue-600">L011</td><td colspan="5" class="p-2 border">Cisterna</td></tr>
+                </tbody>
                 <tfoot>
-                    <tr class="bg-gray-200 font-bold">
-                        <td class="border p-2">L011</td>
-                        <td colspan="4" class="border p-2 text-right uppercase">TOTAL Cisterna</td>
-                        <td id="grand-total" class="border p-2 text-blue-800 text-lg">$ 0.00</td>
+                    <tr class="bg-slate-100 font-bold">
+                        <td class="border p-4 text-blue-700 text-center">L011</td>
+                        <td colspan="4" class="border p-4 text-right">TOTAL CISTERNA (PUEBLA 2026)</td>
+                        <td id="grand-total" class="border p-4 text-right text-lg text-slate-900">$ 0.00</td>
                     </tr>
                 </tfoot>
             </table>
         </div>
 
-        <div class="p-6 bg-gray-50 flex gap-4">
-            <button onclick="addRow()" class="bg-black text-white px-6 py-2 rounded shadow hover:bg-gray-800 transition">
-                + Agregar Material
-            </button>
-            <button onclick="window.print()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded shadow hover:bg-gray-300 transition">
-                Imprimir / PDF
-            </button>
+        <div class="p-6 bg-slate-50 flex flex-wrap gap-3 no-print border-t">
+            <button onclick="addRow()" class="bg-blue-600 text-white px-5 py-2 rounded text-sm font-bold hover:bg-blue-700 transition">+ Fila Manual</button>
+            <button onclick="saveData()" class="bg-green-600 text-white px-5 py-2 rounded text-sm font-bold hover:bg-green-700 transition">💾 Guardar Cambios</button>
+            <button onclick="clearData()" class="bg-red-500 text-white px-5 py-2 rounded text-sm font-bold hover:bg-red-600 transition">Borrar Todo</button>
+            <div class="flex-grow"></div>
+            <button onclick="window.print()" class="bg-slate-800 text-white px-5 py-2 rounded text-sm font-bold hover:bg-black transition">🖨️ Imprimir PDF</button>
+        </div>
+        
+        <div class="p-4 bg-blue-50 text-blue-700 text-xs italic no-print">
+            <strong>Tip:</strong> Puedes copiar celdas de Excel y <strong>pegarlas (Ctrl+V)</strong> directamente en la celda de "Código" para importar múltiples materiales.
         </div>
     </div>
 
     <script>
-        // Catálogo de precios 2026 Puebla
         const catalog = {
             "MA-ACER-0001": { desc: "ARMEX 10X10-4 DE 6.00 M", unit: "PZA", price: 155.00 },
             "MA-ACER-0008": { desc: "MALLA ELECTROSOLDADA 6X6/6-6 ROLLO 100M", unit: "ROLLO", price: 4650.00 },
@@ -72,58 +79,120 @@
             "MA-MURO-0005": { desc: "TABIQUE RECOCIDO ROJO 24X.06X12CM", unit: "PZA", price: 3.10 }
         };
 
-        function addRow(code = "", qty = 0) {
+        function addRow(code = "", qty = 0, cost = null) {
             const tbody = document.getElementById('budget-body');
             const row = document.createElement('tr');
             
             row.innerHTML = `
-                <td class="border p-1"><input type="text" value="${code}" class="table-input p-1 uppercase" onchange="updateRow(this)" placeholder="Código"></td>
-                <td class="border p-1 text-gray-600"><input type="text" class="table-input p-1" readonly></td>
-                <td class="border p-1 text-center text-gray-600"><input type="text" class="table-input text-center" readonly></td>
-                <td class="border p-1"><input type="number" value="${qty}" class="table-input p-1 text-center font-bold" oninput="calculateTotal()"></td>
-                <td class="border p-1"><input type="number" class="table-input p-1 text-right" oninput="calculateTotal()"></td>
-                <td class="border p-1 text-right font-semibold text-gray-800 bg-gray-50">$ 0.00</td>
+                <td class="border p-0"><input type="text" value="${code}" class="table-input code-input font-mono uppercase" placeholder="Código"></td>
+                <td class="border p-0"><input type="text" class="table-input text-gray-500" readonly></td>
+                <td class="border p-0 text-center text-gray-500 uppercase"><input type="text" class="table-input text-center" readonly></td>
+                <td class="border p-0"><input type="number" value="${qty}" class="table-input text-center font-bold qty-input"></td>
+                <td class="border p-0"><input type="number" value="${cost}" class="table-input text-right cost-input"></td>
+                <td class="border p-2 text-right font-bold text-slate-700 bg-slate-50 total-cell">$ 0.00</td>
             `;
+            
             tbody.appendChild(row);
-            if(code) updateRow(row.querySelector('input'));
+            const input = row.querySelector('.code-input');
+            input.addEventListener('input', () => updateByCode(row));
+            input.addEventListener('paste', handlePaste); // Función de pegado masivo
+            row.querySelector('.qty-input').oninput = calculate;
+            row.querySelector('.cost-input').oninput = calculate;
+
+            if(code) updateByCode(row);
         }
 
-        function updateRow(input) {
-            const row = input.closest('tr');
-            const data = catalog[input.value.toUpperCase()];
+        function handlePaste(e) {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            const rows = text.trim().split('\n');
+            
+            rows.forEach((rowData, index) => {
+                const cols = rowData.split('\t'); // Excel usa tabulaciones
+                if (index === 0) {
+                    fillRow(this.closest('tr'), cols);
+                } else {
+                    const newRow = addRow();
+                    fillRow(document.getElementById('budget-body').lastChild, cols);
+                }
+            });
+            calculate();
+        }
+
+        function fillRow(row, cols) {
+            if (!row) return;
+            const codeInput = row.querySelector('.code-input');
+            const qtyInput = row.querySelector('.qty-input');
+            const costInput = row.querySelector('.cost-input');
+            
+            if (cols[0]) codeInput.value = cols[0].trim();
+            if (cols[3]) qtyInput.value = cols[3].replace(/[^0-9.]/g, ''); // Limpiar símbolos de moneda
+            if (cols[4]) costInput.value = cols[4].replace(/[^0-9.]/g, '');
+            
+            updateByCode(row);
+        }
+
+        function updateByCode(row) {
+            const code = row.querySelector('.code-input').value.toUpperCase();
+            const data = catalog[code];
             if(data) {
                 row.cells[1].querySelector('input').value = data.desc;
                 row.cells[2].querySelector('input').value = data.unit;
-                row.cells[4].querySelector('input').value = data.price;
+                if(!row.querySelector('.cost-input').value) {
+                    row.querySelector('.cost-input').value = data.price;
+                }
             }
-            calculateTotal();
+            calculate();
         }
 
-        function calculateTotal() {
+        function calculate() {
             let grandTotal = 0;
-            const rows = document.querySelectorAll('#budget-body tr:not(.bg-gray-100):not(.bg-gray-50)');
-            
+            const rows = document.querySelectorAll('#budget-body tr');
             rows.forEach(row => {
-                const qty = parseFloat(row.cells[3].querySelector('input').value) || 0;
-                const cost = parseFloat(row.cells[4].querySelector('input').value) || 0;
-                const total = qty * cost;
-                row.cells[5].innerText = '$ ' + total.toLocaleString('es-MX', {minimumFractionDigits: 2});
-                grandTotal += total;
+                const qtyInput = row.querySelector('.qty-input');
+                const costInput = row.querySelector('.cost-input');
+                if (qtyInput && costInput) {
+                    const total = (parseFloat(qtyInput.value) || 0) * (parseFloat(costInput.value) || 0);
+                    row.querySelector('.total-cell').innerText = '$ ' + total.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                    grandTotal += total;
+                }
             });
-            
             document.getElementById('grand-total').innerText = '$ ' + grandTotal.toLocaleString('es-MX', {minimumFractionDigits: 2});
         }
 
-        // Carga inicial con tus datos de la imagen
+        function saveData() {
+            const data = [];
+            document.querySelectorAll('#budget-body tr').forEach(row => {
+                const code = row.querySelector('.code-input')?.value;
+                if(code) {
+                    data.push({
+                        c: code,
+                        q: row.querySelector('.qty-input').value,
+                        p: row.querySelector('.cost-input').value
+                    });
+                }
+            });
+            localStorage.setItem('presupuesto_david', JSON.stringify(data));
+            document.getElementById('save-status').innerText = "✅ Guardado localmente";
+            setTimeout(() => document.getElementById('save-status').innerText = "", 3000);
+        }
+
+        function clearData() {
+            if(confirm("¿Seguro que quieres borrar todo el contenido?")) {
+                localStorage.removeItem('presupuesto_david');
+                location.reload();
+            }
+        }
+
         window.onload = () => {
-            const initialData = [
-                {c: "MA-ACER-0001", q: 6}, {c: "MA-ACER-0008", q: 0.34},
-                {c: "MA-ACER-0010", q: 20}, {c: "MA-ACER-0011", q: 2},
-                {c: "MA-ACER-0002", q: 4}, {c: "MA-AGLU-0001", q: 0.30},
-                {c: "MA-AGLU-0002", q: 2}, {c: "MA-LOPF-0002", q: 44},
-                {c: "MA-LOPF-0016", q: 8}, {c: "MA-MURO-0005", q: 1375}
-            ];
-            initialData.forEach(item => addRow(item.c, item.q));
+            const saved = localStorage.getItem('presupuesto_david');
+            if(saved) {
+                JSON.parse(saved).forEach(item => addRow(item.c, item.q, item.p));
+            } else {
+                // Datos iniciales si no hay nada guardado
+                const initial = [{c:"MA-ACER-0001",q:6},{c:"MA-ACER-0008",q:0.34},{c:"MA-ACER-0010",q:20},{c:"MA-ACER-0011",q:2},{c:"MA-ACER-0002",q:4},{c:"MA-AGLU-0001",q:0.30},{c:"MA-AGLU-0002",q:2},{c:"MA-LOPF-0002",q:44},{c:"MA-LOPF-0016",q:8},{c:"MA-MURO-0005",q:1375}];
+                initial.forEach(item => addRow(item.c, item.q));
+            }
         };
     </script>
 </body>
