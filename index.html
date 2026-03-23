@@ -2,169 +2,102 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Cotización Maestro | Arq. David Lindoro</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>Control de Insumos Nativo | Arq. David Lindoro</title>
     <style>
-        :root { --gold: #c5a059; --dark: #1a1a1a; --bg: #f4f4f4; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; align-items: center; }
+        :root { --gold: #c5a059; --dark: #1a1a1a; --excel-border: #d4d4d4; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #444; margin: 0; }
         
-        /* Header Elegante */
-        .admin-header { width: 100%; background: var(--dark); color: white; padding: 20px; text-align: center; border-bottom: 4px solid var(--gold); }
-        .admin-header h1 { margin: 0; letter-spacing: 3px; font-weight: 300; font-size: 22px; }
+        /* Panel de Control Estilo Dashboard */
+        .dashboard { background: var(--dark); color: white; padding: 20px; position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--gold); }
+        .dashboard h1 { margin: 0 0 15px 0; font-size: 18px; letter-spacing: 2px; text-align: center; font-weight: 300; }
+        .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; max-width: 1300px; margin: auto; }
+        .control-grid div label { display: block; font-size: 9px; color: var(--gold); text-transform: uppercase; margin-bottom: 4px; }
+        .control-grid input { width: 90%; background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 6px; font-size: 13px; border-radius: 3px; outline: none; }
+        .control-grid input:focus { border-color: var(--gold); }
 
-        .container { max-width: 1000px; width: 95%; background: white; margin: 20px 0; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 8px; }
+        /* Contenedor del Excel */
+        .excel-sheet { background: white; width: 98%; max-width: 1500px; margin: 20px auto; overflow-x: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        
+        /* Encabezados de Partida (Semanas) */
+        .row-header { background: #f2f2f2; font-weight: bold; color: #333; text-transform: uppercase; font-size: 13px; }
+        .row-header td { padding: 12px; border: 1px solid var(--excel-border); border-left: 6px solid var(--gold); }
 
-        /* Panel de Actualización Diaria (Solo para ti) */
-        .price-updater { background: #fffde7; border: 1px solid #fbc02d; padding: 20px; margin-bottom: 30px; border-radius: 5px; }
-        .price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
-        .price-item label { font-size: 11px; font-weight: bold; display: block; margin-bottom: 5px; color: #555; }
-        .price-item input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
+        /* Encabezados de Columnas */
+        thead th { background: #e1e1e1; color: #555; font-weight: normal; border: 1px solid var(--excel-border); padding: 5px; font-size: 11px; position: sticky; top: 125px; z-index: 900; }
+        
+        /* Estilo de Celdas */
+        tbody td { border: 1px solid var(--excel-border); padding: 6px 10px; color: #444; }
+        .col-id { background: #f9f9f9; font-family: 'Consolas', monospace; width: 100px; text-align: center; }
+        .col-desc { width: 450px; }
+        .col-unit { width: 60px; text-align: center; }
+        .col-qty { width: 80px; text-align: center; font-weight: bold; }
+        .col-price { width: 110px; text-align: right; background: #fff; }
+        .col-total { width: 130px; text-align: right; background: #fffdf0; font-weight: bold; color: #000; }
 
-        /* Tabla de Cotización */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
-        th { background: var(--dark); color: white; padding: 12px; text-align: left; text-transform: uppercase; letter-spacing: 1px; }
-        td { padding: 12px; border-bottom: 1px solid #eee; }
-        tr:hover { background: #fdfaf4; }
-
-        .total-banner { background: var(--dark); color: white; padding: 30px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; }
-        .total-amount { font-size: 36px; color: var(--gold); font-weight: bold; }
-
-        .btn { padding: 15px 25px; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
-        .btn-wa { background: #25d366; color: white; text-decoration: none; display: inline-block; }
-        .btn-pdf { background: var(--gold); color: white; margin-right: 10px; }
+        /* Footer de Totales */
+        .footer-total { background: #111; color: white; padding: 30px; text-align: right; border-top: 5px solid var(--gold); }
+        .total-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+        .total-value { font-size: 40px; color: var(--gold); font-weight: bold; margin-top: 5px; }
+        
+        .btn-wa { background: #25d366; color: white; padding: 15px 30px; border: none; text-decoration: none; display: inline-block; margin-top: 20px; font-weight: bold; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div class="admin-header">
-    <h1>ARQ. DAVID LINDORO JUÁREZ</h1>
-    <div style="font-size: 10px; color: var(--gold);">SISTEMA DE CONTROL DE INSUMOS - PUEBLA 2026</div>
+<div class="dashboard">
+    <h1>REPORTE DE INSUMOS NATIVO - ARQ. DAVID LINDORO</h1>
+    <div class="control-grid">
+        <div><label>Cemento Gris (Ton)</label><input type="number" id="val-cemento" value="5120" oninput="runExcel()"></div>
+        <div><label>Varilla 3/8 (Ton)</label><input type="number" id="val-varilla" value="28450" oninput="runExcel()"></div>
+        <div><label>Armex 10x10 (Pza)</label><input type="number" id="val-armex" value="168.50" oninput="runExcel()"></div>
+        <div><label>Tabique Multi (Pza)</label><input type="number" id="val-tabique" value="12.95" oninput="runExcel()"></div>
+        <div><label>Pétreos m3 (Arena)</label><input type="number" id="val-petreo" value="415" oninput="runExcel()"></div>
+        <div><label>Cocina Tipo B</label><input type="number" id="val-cocina" value="31450" oninput="recalculaTodo()"></div>
+    </div>
 </div>
 
-<div class="container">
-    <div class="price-updater">
-        <h3 style="margin-top:0; font-size: 14px;">🛠 PANEL DE ACTUALIZACIÓN DE COSTOS (DIARIO)</h3>
-        <div class="price-grid">
-            <div class="price-item">
-                <label>CEMENTO GRIS (TON)</label>
-                <input type="number" id="base-cemento" value="5120" oninput="actualizarTodo()">
-            </div>
-            <div class="price-item">
-                <label>ACERO VARILLA (TON)</label>
-                <input type="number" id="base-acero" value="28450" oninput="actualizarTodo()">
-            </div>
-            <div class="price-item">
-                <label>ARMEX 10X10 (PZA)</label>
-                <input type="number" id="base-armex" value="168" oninput="actualizarTodo()">
-            </div>
-            <div class="price-item">
-                <label>TABIQUE MULTI (PZA)</label>
-                <input type="number" id="base-tabique" value="12.95" oninput="actualizarTodo()">
-            </div>
-            <div class="price-item">
-                <label>COCINA TIPO B</label>
-                <input type="number" id="base-cocina" value="31450" oninput="actualizarTodo()">
-            </div>
-        </div>
-        <p style="font-size: 10px; color: #888; margin-top: 10px;">* Al cambiar estos valores, los 557 renglones se recalcularán proporcionalmente.</p>
-    </div>
+<div class="excel-sheet">
+    <table id="mainTable">
+        <thead>
+            <tr>
+                <th>CÓDIGO</th>
+                <th>DESCRIPCIÓN DEL INSUMO</th>
+                <th>UNID</th>
+                <th>CANT.</th>
+                <th>P. UNITARIO</th>
+                <th>IMPORTE</th>
+            </tr>
+        </thead>
+        <tbody id="excel-body">
+            </tbody>
+    </table>
+</div>
 
-    <div style="overflow-x:auto;">
-        <table id="tabla-insumos">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Descripción del Insumo</th>
-                    <th>Unidad</th>
-                    <th>Cantidad</th>
-                    <th>Costo Unitario</th>
-                    <th>Importe</th>
-                </tr>
-            </thead>
-            <tbody id="cuerpo-tabla">
-                </tbody>
-        </table>
-    </div>
-
-    <div class="total-banner">
-        <div>
-            <span style="display:block; font-size: 12px; color: #aaa;">INVERSIÓN TOTAL ESTIMADA (PROTOTIPO MÚNICH)</span>
-            <div id="total-final" class="total-amount">$0.00</div>
-        </div>
-        <div>
-            <button class="btn btn-pdf" onclick="generarPDF()">Generar Reporte</button>
-            <a href="#" id="wa-link" class="btn btn-wa" target="_blank">Enviar por WhatsApp</a>
-        </div>
-    </div>
+<div class="footer-total">
+    <div class="total-label">Inversión Total Actualizada (Puebla 2026)</div>
+    <div id="grand-total" class="total-value">$0.00</div>
+    <a href="#" id="wa-btn" class="btn-wa">Enviar Presupuesto por WhatsApp</a>
 </div>
 
 <script>
-    // Datos nativos extraídos de tu Excel (Muestra representativa de los 557 renglones)
-    // En un entorno real, este array contiene los 557 objetos.
-    const baseInsumos = [
-        { cod: "MA-ACER-0001", desc: "ARMEX 10X10-4 DE 6.00 M", unid: "PZA", cant: 6, cat: "armex" },
-        { cod: "MA-ACER-0015", desc: "VARILLA CORRUGADA 3/8", unid: "TON", cant: 0.85, cat: "acero" },
-        { cod: "MA-AGLU-0002", desc: "CEMENTO GRIS (PORTLAND)", unid: "TON", cant: 1.1, cat: "cemento" },
-        { cod: "MA-MURO-0001", desc: "TABIQUE 10X20X33 MULTIPERFORADO", unid: "PZA", cant: 1250, cat: "tabique" },
-        { cod: "EQ-COCI-0001", desc: "COCINA INTEGRAL TIPO B", unid: "PZA", cant: 1, cat: "cocina" },
-        { cod: "MA-PETR-0001", desc: "ARENA DE MINA", unid: "M3", cant: 4.5, cat: "fijo", precio: 415 },
-        { cod: "MA-HIDR-0001", desc: "TUBO PVC SANITARIO 4\"", unid: "PZA", cant: 8, cat: "fijo", precio: 512 },
-        // ... aquí se cargan los 557 renglones
-    ];
-
-    function actualizarTodo() {
-        const preciosRef = {
-            cemento: parseFloat(document.getElementById('base-cemento').value),
-            acero: parseFloat(document.getElementById('base-acero').value),
-            armex: parseFloat(document.getElementById('base-armex').value),
-            tabique: parseFloat(document.getElementById('base-tabique').value),
-            cocina: parseFloat(document.getElementById('base-cocina').value),
-            fijo: 1 // multiplicador para los que tienen precio base
-        };
-
-        let totalGeneral = 0;
-        const tbody = document.getElementById('cuerpo-tabla');
-        tbody.innerHTML = "";
-
-        baseInsumos.forEach(item => {
-            let unitario = item.precio || preciosRef[item.cat];
-            let importe = unitario * item.cant;
-            totalGeneral += importe;
-
-            let fila = `<tr>
-                <td>${item.cod}</td>
-                <td>${item.desc}</td>
-                <td>${item.unid}</td>
-                <td>${item.cant}</td>
-                <td>$${unitario.toLocaleString('es-MX', {minimumFractionDigits:2})}</td>
-                <td><b>$${importe.toLocaleString('es-MX', {minimumFractionDigits:2})}</b></td>
-            </tr>`;
-            tbody.innerHTML += fila;
-        });
-
-        const totalFmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalGeneral);
-        document.getElementById('total-final').innerText = totalFmt;
-
-        // Actualizar link de WhatsApp
-        const msg = `Cotización Actualizada Arq. Lindoro: Total ${totalFmt}`;
-        document.getElementById('wa-link').href = `https://wa.me/522221774020?text=${encodeURIComponent(msg)}`;
-    }
-
-    function generarPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text("REPORTE DE COSTOS ACTUALIZADOS - ARQ. DAVID LINDORO", 20, 20);
-        doc.setFontSize(12);
-        doc.text(`Total de Obra: ${document.getElementById('total-final').innerText}`, 20, 35);
-        doc.text("Puebla, Pue. - " + new Date().toLocaleDateString(), 20, 42);
-        doc.save("Presupuesto_Lindoro_Actualizado.pdf");
-    }
-
-    // Carga inicial
-    window.onload = actualizarTodo;
-</script>
-
-</body>
-</html>
+    // BASE DE DATOS MAESTRA (Aquí se pegan los 557 renglones del Excel)
+    const dbInsumos = [
+        // PARTIDA: CIMENTACIÓN
+        { tipo: 'header', titulo: 'SEMANA 1-2: CIMENTACIÓN Y CISTERNA' },
+        { cod: "MA-ACER-0001", desc: "ARMEX 10X10-4 DE 6.00 M", unid: "PZA", cant: 6, cat: 'armex' },
+        { cod: "MA-ACER-0015", desc: "VARILLA CORRUGADA 3/8", unid: "TON", cant: 0.85, cat: 'varilla' },
+        { cod: "MA-AGLU-0002", desc: "CEMENTO GRIS (PORTLAND)", unid: "TON", cant: 1.1, cat: 'cemento' },
+        { cod: "MA-PETR-0001", desc: "ARENA DE MINA", unid: "M3", cant: 4.5, cat: 'petreo' },
+        
+        // PARTIDA: MUROS
+        { tipo: 'header', titulo: 'SEMANA 3-6: MUROS Y ESTRUCTURA ALTA' },
+        { cod: "MA-MURO-0001", desc: "TABIQUE 10X20X33 MULTIPERFORADO", unid: "PZA", cant: 1250, cat: 'tabique' },
+        { cod: "MA-MURO-0005", desc: "LADRILLO ROJO RECOCIDO", unid: "PZA", cant: 800, cat: 'fijo', p: 6.20 },
+        { cod: "MA-AGLU-0006", desc: "ESTUCO / ADEBLOC PLUS", unid: "TON", cant: 0.45, cat: 'fijo', p: 4250 },
+        
+        // PARTIDA: ACABADOS
+        { tipo: 'header', titulo: 'SEMANA 11-13: ACABADOS Y EQUIPAMIENTO' },
+        { cod: "EQ-COCI-0001", desc: "COCINA INTEGRAL TIPO B", unid: "PZA", cant: 1, cat: 'cocina' },
+        { cod: "MA-MADR-0001", desc: "PUERTAS DE COMUNICACIÓN", unid: "PZA", cant: 3, cat: 'fijo', p: 4950 },
+        { cod: "MA-PISO-0015", desc: "PISO CERÁM
