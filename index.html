@@ -2,49 +2,63 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Presupuesto Cuádruplex | Arq. David Lindoro</title>
+    <title>Control de Obra Casa Nubia | Arq. David Lindoro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <style>
         :root { --dark: #1a1a1a; --gold: #c5a059; --accent: #27ae60; }
-        body { font-family: 'Helvetica', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
-        .header { background: var(--dark); color: white; padding: 20px; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .total-box { text-align: right; }
-        .total-box span { font-size: 24px; color: var(--gold); font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; font-size: 12px; }
-        th { background: #333; color: white; padding: 10px; text-align: left; }
-        td { border: 1px solid #ddd; padding: 8px; }
-        .row-semana { background: #333 !important; color: var(--gold) !important; font-weight: bold; }
-        .row-partida { background: #f9f9f9; font-weight: bold; border-left: 4px solid var(--gold); }
-        .col-edit { background: #fffde7; font-weight: bold; cursor: cell; }
+        body { font-family: 'Helvetica', sans-serif; background: #f4f4f4; padding: 20px; margin: 0; }
+        .header-fixed { background: var(--dark); color: white; padding: 20px; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .summary-box { text-align: right; }
+        .summary-box span { font-size: 24px; color: var(--gold); font-weight: bold; }
+        .container { padding: 20px; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        input[type="file"] { background: white; padding: 10px; border: 1px solid #ddd; }
+        button { padding: 10px 15px; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; transition: 0.3s; }
+        .btn-pdf { background: var(--gold); color: white; }
+        .btn-excel { background: var(--accent); color: white; }
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 85px; z-index: 90; }
+        td { border: 1px solid #eee; padding: 8px; }
+        .row-semana { background: #333 !important; color: var(--gold) !important; font-weight: bold; font-size: 14px; }
+        .row-partida { background: #f8f8f8; font-weight: bold; color: #444; border-left: 4px solid var(--gold); }
+        .col-edit { background: #fffde7; font-weight: bold; color: #000; }
         .col-resaltada { font-weight: bold; color: var(--accent); text-align: right; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div><strong>CASA NUBIA - INDIVIDUAL (1/4)</strong><br>Arq. David Lindoro Juárez</div>
-    <div class="total-box">Total Presupuesto: <br><span id="total-global">$0.00</span></div>
+<div class="header-fixed">
+    <div>
+        <strong>ARQ. DAVID LINDORO JUÁREZ</strong><br>
+        <small>Consultoría Técnica: Casa Nubia - Múnich Residencial</small>
+    </div>
+    <div class="summary-box">
+        <div>Inversión Total Acumulada</div>
+        <span id="total-global">$0.00</span>
+    </div>
 </div>
 
-<div style="margin: 20px 0;">
-    <input type="file" id="upload-excel" accept=".xlsx, .csv" />
-    <p><small>* Cantidades divididas entre 4 automáticamente para esquema Cuádruplex.</small></p>
+<div class="container">
+    <div class="controls">
+        <input type="file" id="upload-excel" accept=".xlsx, .csv" />
+        <button class="btn-pdf" onclick="generarPDF()">Descargar Reporte PDF</button>
+        <button class="btn-excel" onclick="exportarExcel()">Guardar Cambios Excel</button>
+    </div>
+    <div id="tabla-presupuesto"></div>
 </div>
-
-<div id="tabla-presupuesto"></div>
 
 <script>
     let datosObra = [];
-    let yaDividido = false;
 
     document.getElementById('upload-excel').addEventListener('change', function(e) {
         const reader = new FileReader();
-        reader.onload = function(event) {
-            const data = new Uint8Array(event.target.result);
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             datosObra = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
-            yaDividido = false; // Resetear bandera para nuevo archivo
             procesarYRenderizar();
         };
         reader.readAsArrayBuffer(e.target.files[0]);
@@ -53,38 +67,23 @@
     function procesarYRenderizar() {
         if (datosObra.length === 0) return;
 
-        // 1. DIVISIÓN ÚNICA (Solo ocurre una vez al cargar el archivo)
-        if (!yaDividido) {
-            for (let i = 0; i < datosObra.length; i++) {
-                const codigo = String(datosObra[i][0] || "");
-                // Detectamos que es un insumo y no un encabezado (L01, L11, etc)
-                if (i >= 7 && !codigo.match(/^L\d{1,3}$/) && datosObra[i][1] !== "") {
-                    let cantOriginal = parseFloat(datosObra[i][3]) || 0;
-                    let costo = parseFloat(datosObra[i][4]) || 0;
-                    
-                    if (cantOriginal > 0) {
-                        datosObra[i][3] = (cantOriginal / 4).toFixed(4); // Cantidad Individual
-                        datosObra[i][5] = (datosObra[i][3] * costo).toFixed(2); // Importe Individual
-                    }
-                }
-            }
-            yaDividido = true;
-        }
-
-        // 2. CONSTRUCCIÓN DE LA TABLA
-        let html = '<table><thead><tr>';
-        const encabezados = ["Código", "Descripción", "Unidad", "Cant. Individual", "Costo Unit. (E)", "Importe (F)"];
+        let html = '<table id="main-table"><thead><tr>';
+        const encabezados = ["Código", "Descripción", "Unidad", "Cant.", "Costo", "Importe"];
         encabezados.forEach(h => html += `<th>${h}</th>`);
         html += '</tr></thead><tbody>';
 
         let acumuladoTotal = 0;
 
+        // Iniciamos en la fila donde detectamos los datos reales
         for (let i = 7; i < datosObra.length; i++) {
             const fila = datosObra[i];
             const codigo = String(fila[0] || "");
-            if (!fila[1] && !codigo) continue;
+            const desc = String(fila[1] || "");
+
+            if (!desc && !codigo) continue;
 
             let claseFila = "";
+            // Detección de Semanas (L01, L12, L13) y Partidas (L011, etc)
             if (codigo.match(/^L\d{2}$/)) claseFila = "row-semana";
             else if (codigo.match(/^L\d{3}$/)) claseFila = "row-partida";
 
@@ -95,7 +94,6 @@
                 let esEditable = (j === 3 || j === 4) && claseFila === "" ? `contenteditable="true" class="col-edit" onblur="actualizarDato(${i}, ${j}, this)"` : "";
                 let claseCelda = j === 5 ? 'class="col-resaltada"' : "";
                 
-                // Formatear números para visualización
                 let displayValue = valor;
                 if ((j === 4 || j === 5) && !isNaN(parseFloat(valor)) && valor !== "") {
                     displayValue = parseFloat(valor).toLocaleString('es-MX', {minimumFractionDigits: 2});
@@ -112,23 +110,4 @@
 
         html += '</tbody></table>';
         document.getElementById('tabla-presupuesto').innerHTML = html;
-        document.getElementById('total-global').innerText = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(acumuladoTotal);
-    }
-
-    function actualizarDato(fila, col, el) {
-        // Limpiar formato de moneda antes de guardar
-        let valorLimpio = parseFloat(el.innerText.replace(/[^0-9.-]+/g,"")) || 0;
-        datosObra[fila][col] = valorLimpio;
-
-        // Recalcular Importe (F = D * E)
-        let cant = parseFloat(datosObra[fila][3]) || 0;
-        let costo = parseFloat(datosObra[fila][4]) || 0;
-        datosObra[fila][5] = (cant * costo).toFixed(2);
-
-        // Re-renderizar para actualizar el total global y formatos
-        procesarYRenderizar();
-    }
-</script>
-
-</body>
-</html>
+        document.getElementById('total-global').innerText = new Intl.Number
