@@ -18,9 +18,9 @@
         .btn-xls { background: var(--accent); }
         .btn-pdf { background: var(--pdf); }
         button:hover { opacity: 0.9; transform: translateY(-1px); }
-        .table-wrapper { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .table-wrapper { background: white; border-radius: 8px; overflow: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-height: 70vh; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { background: #333; color: white; padding: 12px; text-align: left; }
+        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 0; }
         td { border-bottom: 1px solid #eee; padding: 8px; }
         .row-semana { background: #2c3e50 !important; color: var(--gold) !important; font-weight: bold; }
         .col-money { text-align: right; font-weight: bold; }
@@ -37,7 +37,7 @@
 <div class="container">
     <div class="card-controls">
         <input type="file" id="file-input" accept=".xlsx, .csv" style="flex-grow:1" />
-        <button class="btn-xls" onclick="exportarExcel()">Exportar .XLS</button>
+        <button class="btn-xls" onclick="forzarDescargaXLS()">Exportar .XLS (Guardar como)</button>
         <button class="btn-pdf" onclick="exportarPDF()">Descargar PDF</button>
     </div>
     <div id="tabla-render" class="table-wrapper"></div>
@@ -45,7 +45,7 @@
 
 <script>
     let matrix = [];
-    const AJUSTE_2026 = 1.085;
+    const AJUSTE_2026 = 1.085; // +8.5% inflacionario
 
     document.getElementById('file-input').addEventListener('change', function(e) {
         const reader = new FileReader();
@@ -54,19 +54,22 @@
             const workbook = XLSX.read(data, { type: 'array' });
             matrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" });
             
-            // Actualizar precios al cargar (de fila 8 en adelante)
-            for (let i = 8; i < matrix.length; i++) {
-                let costo = parseFloat(matrix[i][4]);
-                let cant = parseFloat(matrix[i][3]);
-                if (!isNaN(costo) && costo > 0 && matrix[i][2] !== "") {
-                    matrix[i][4] = Number((costo * AJUSTE_2026).toFixed(2));
-                    if (!isNaN(cant)) matrix[i][5] = Number((cant * matrix[i][4]).toFixed(2));
-                }
-            }
+            actualizarPreciosMemoria();
             renderTable();
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
+
+    function actualizarPreciosMemoria() {
+        for (let i = 8; i < matrix.length; i++) {
+            let costo = parseFloat(matrix[i][4]);
+            let cant = parseFloat(matrix[i][3]);
+            if (!isNaN(costo) && costo > 0 && matrix[i][2] !== "") {
+                matrix[i][4] = Number((costo * AJUSTE_2026).toFixed(2));
+                if (!isNaN(cant)) matrix[i][5] = Number((cant * matrix[i][4]).toFixed(2));
+            }
+        }
+    }
 
     function renderTable() {
         if (matrix.length === 0) return;
@@ -76,7 +79,6 @@
         for (let i = 8; i < matrix.length; i++) {
             const fila = matrix[i];
             if (!fila[1] && !fila[0]) continue;
-
             let esCabecera = String(fila[0]).match(/^L\d{2,3}$/);
             let clase = esCabecera ? "row-semana" : "";
             
@@ -89,43 +91,63 @@
             }
             html += '</tr>';
         }
-        document.getElementById('tabla-render').innerHTML = html + '</tbody></table>';
         document.getElementById('total-global').innerText = totalGlobal.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
+        document.getElementById('tabla-render').innerHTML = html + '</tbody></table>';
     }
 
-    // EXPORTACIÓN EXCEL (.XLS)
-    function exportarExcel() {
-        if (matrix.length === 0) return alert("Cargue un archivo.");
+    // NUEVA FUNCIÓN: FUERZA LA VENTANA DE "GUARDAR COMO"
+    function forzarDescargaXLS() {
+        if (matrix.length === 0) return alert("Cargue un archivo primero.");
+
+        // 1. Crear el libro y la hoja
         const ws = XLSX.utils.aoa_to_sheet(matrix);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Presupuesto");
+        XLSX.utils.book_append_sheet(wb, ws, "Presupuesto_2026");
+
+        // 2. Generar el binario del archivo
+        const excelBinario = XLSX.write(wb, { bookType: 'xls', type: 'binary' });
+
+        // 3. Convertir a buffer para el Blob
+        const buffer = new ArrayBuffer(excelBinario.length);
+        const view = new Uint8Array(buffer);
+        for (let i = 0; i < excelBinario.length; i++) {
+            view[i] = excelBinario.charCodeAt(i) & 0xFF;
+        }
+
+        // 4. Crear el Blob y el enlace de descarga forzada
+        const blob = new Blob([buffer], { type: 'application/vnd.ms-excel' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
         
-        // Nombre dinámico para evitar error de "archivo abierto"
         const stamp = new Date().getTime().toString().slice(-4);
-        XLSX.writeFile(wb, `Presupuesto_2026_${stamp}.xls`, { bookType: 'biff8' });
+        a.href = url;
+        a.download = `Presupuesto_2026_${stamp}.xls`;
+        
+        // 5. Simular el clic y limpiar
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
     }
 
-    // EXPORTACIÓN PDF
     function exportarPDF() {
         if (matrix.length === 0) return alert("Cargue un archivo.");
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'pt', 'letter');
-        
         doc.setFontSize(16);
         doc.text("PRESUPUESTO ACTUALIZADO 2026", 40, 40);
         doc.setFontSize(10);
-        doc.text("CONSULTORÍA TÉCNICA: ARQ. DAVID LINDORO JUÁREZ", 40, 55);
-        
+        doc.text("ARQ. DAVID LINDORO JUÁREZ", 40, 55);
         doc.autoTable({
             html: '#tabla-datos',
             startY: 70,
             theme: 'striped',
             headStyles: { fillStyle: '#333', fontSize: 8 },
-            styles: { fontSize: 7 },
-            margin: { left: 40, right: 40 }
+            styles: { fontSize: 7 }
         });
-        
-        doc.save(`Reporte_Inversion_2026.pdf`);
+        doc.save(`Reporte_2026.pdf`);
     }
 </script>
 </body>
