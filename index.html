@@ -2,25 +2,29 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Actualización Ejecutiva 2026 | Arq. David Lindoro Juárez</title>
+    <title>Consultoría Técnica 2026 | Arq. David Lindoro Juárez</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    
     <style>
         :root { --dark: #1a1a1a; --gold: #c5a059; --accent: #27ae60; }
-        body { font-family: 'Helvetica', sans-serif; background: #f4f4f4; padding: 20px; margin: 0; }
-        .header-fixed { background: var(--dark); color: white; padding: 20px; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        body { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+        .header-fixed { background: var(--dark); color: white; padding: 20px; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
         .summary-box { text-align: right; }
-        .summary-box span { font-size: 24px; color: var(--gold); font-weight: bold; }
+        .summary-box span { font-size: 26px; color: var(--gold); font-weight: bold; }
         .container { padding: 20px; }
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        button { padding: 10px 15px; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; transition: 0.3s; }
-        .btn-save { background: var(--accent); color: white; }
+        .controls { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; background: white; padding: 15px; border-radius: 8px; }
+        button { padding: 12px 20px; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; border-radius: 4px; transition: 0.3s; }
+        .btn-excel { background: var(--accent); color: white; border-bottom: 3px solid #1e8449; }
+        .btn-excel:hover { background: #2ecc71; }
+        .btn-pdf { background: var(--gold); color: white; border-bottom: 3px solid #a68545; }
         table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
-        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 85px; z-index: 90; }
+        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 90px; z-index: 90; }
         td { border: 1px solid #eee; padding: 8px; }
         .row-semana { background: #333 !important; color: var(--gold) !important; font-weight: bold; }
-        .col-edit { background: #fffde7; font-weight: bold; color: #b91c1c; }
+        .row-partida { background: #f8f8f8; font-weight: bold; border-left: 4px solid var(--gold); }
+        .col-edit { background: #fffde7; font-weight: bold; color: #b91c1c; outline: none; }
         .col-resaltada { font-weight: bold; color: var(--accent); text-align: right; }
     </style>
 </head>
@@ -28,11 +32,11 @@
 
 <div class="header-fixed">
     <div>
-        <strong>ARQ. DAVID LINDORO JUÁREZ</strong><br>
-        <small>Actualización Técnica de Precios: Proyección Marzo 2026</small>
+        <strong style="font-size: 1.2rem; letter-spacing: 1px;">ARQ. DAVID LINDORO JUÁREZ</strong><br>
+        <small style="color: var(--gold);">CONTROL PRESUPUESTAL ACTUALIZADO AÑO 2026</small>
     </div>
     <div class="summary-box">
-        <div>Inversión Total (Actualizada 2026)</div>
+        <div style="font-size: 10px; text-transform: uppercase;">Inversión Proyectada 2026</div>
         <span id="total-global">$0.00</span>
     </div>
 </div>
@@ -40,108 +44,11 @@
 <div class="container">
     <div class="controls">
         <input type="file" id="upload-excel" accept=".xlsx, .csv" />
-        <button class="btn-save" onclick="exportarExcel()">Descargar Excel Actualizado 2026</button>
-        <button style="background:var(--gold); color:white;" onclick="generarPDF()">PDF Ejecutivo</button>
+        <button class="btn-excel" onclick="descargarExcelActualizado()">Descargar Excel 2026</button>
+        <button class="btn-pdf" onclick="generarPDF()">Generar Reporte PDF</button>
     </div>
     <div id="tabla-presupuesto"></div>
 </div>
 
 <script>
-    let datosObra = [];
-    // Factor inflacionario marzo 2026 (8.5% sobre base original)
-    const FACTOR_INFLACION = 1.085; 
-
-    document.getElementById('upload-excel').addEventListener('change', function(e) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            datosObra = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
-            
-            // ACCIÓN: Modificación permanente en el objeto de datos
-            aplicarActualizacion2026();
-            procesarYRenderizar();
-        };
-        reader.readAsArrayBuffer(e.target.files[0]);
-    });
-
-    function aplicarActualizacion2026() {
-        // Recorremos desde la fila 8 donde empiezan los insumos (Código, Desc, etc.)
-        for (let i = 8; i < datosObra.length; i++) {
-            let costoOriginal = parseFloat(datosObra[i][4]); // Columna E
-            let cantidad = parseFloat(datosObra[i][3]);      // Columna D
-            
-            // Solo actualizamos si hay un costo válido y no es una fila de título
-            if (!isNaN(costoOriginal) && costoOriginal > 0 && datosObra[i][2] !== "") {
-                // Actualizamos Columna E (Costo)
-                let nuevoCosto = (costoOriginal * FACTOR_INFLACION);
-                datosObra[i][4] = parseFloat(nuevoCosto.toFixed(2));
-                
-                // Actualizamos Columna F (Importe) basado en el nuevo costo
-                if (!isNaN(cantidad)) {
-                    datosObra[i][5] = parseFloat((cantidad * nuevoCosto).toFixed(2));
-                }
-            }
-        }
-    }
-
-    function procesarYRenderizar() {
-        if (datosObra.length === 0) return;
-        let html = '<table><thead><tr><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cant.</th><th>Costo 2026</th><th>Importe</th></tr></thead><tbody>';
-        let acumuladoTotal = 0;
-
-        for (let i = 8; i < datosObra.length; i++) {
-            const fila = datosObra[i];
-            const codigo = String(fila[0] || "");
-            if (!fila[1] && !codigo) continue;
-
-            let claseFila = "";
-            if (codigo.match(/^L\d{2}$/)) claseFila = "row-semana";
-            else if (codigo.match(/^L\d{3}$/)) claseFila = "row-partida";
-
-            html += `<tr class="${claseFila}">`;
-            for (let j = 0; j < 6; j++) {
-                let valor = fila[j] || "";
-                let esEditable = j === 4 && claseFila === "" ? `contenteditable="true" class="col-edit" onblur="actualizarManual(${i}, ${j}, this)"` : "";
-                
-                let display = valor;
-                if ((j === 4 || j === 5) && !isNaN(parseFloat(valor))) {
-                    display = parseFloat(valor).toLocaleString('es-MX', {minimumFractionDigits: 2});
-                }
-                html += `<td ${esEditable} class="${j === 5 ? 'col-resaltada' : ''}">${display}</td>`;
-                
-                if (j === 5 && claseFila === "" && !isNaN(parseFloat(valor))) {
-                    acumuladoTotal += parseFloat(valor);
-                }
-            }
-            html += '</tr>';
-        }
-        document.getElementById('tabla-presupuesto').innerHTML = html + '</tbody></table>';
-        document.getElementById('total-global').innerText = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(acumuladoTotal);
-    }
-
-    function actualizarManual(fila, col, el) {
-        let val = parseFloat(el.innerText.replace(/[^0-9.-]+/g,"")) || 0;
-        datosObra[fila][col] = val;
-        datosObra[fila][5] = (parseFloat(datosObra[fila][3]) * val).toFixed(2);
-        procesarYRenderizar();
-    }
-
-    function generarPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'pt', 'letter');
-        doc.text("PRESUPUESTO ACTUALIZADO 2026", 40, 40);
-        doc.autoTable({ html: 'table', startY: 60, styles: { fontSize: 7 } });
-        doc.save("Presupuesto_2026_Lindoro.pdf");
-    }
-
-    function exportarExcel() {
-        const ws = XLSX.utils.aoa_to_sheet(datosObra);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Presupuesto 2026");
-        XLSX.writeFile(wb, "Presupuesto_Actualizado_2026.xlsx");
-    }
-</script>
-</body>
-</html>
+    let datos
