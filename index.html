@@ -1,155 +1,68 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Control de Obra Casa Nubia | Arq. David Lindoro</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <style>
-        :root { --dark: #1a1a1a; --gold: #c5a059; --accent: #27ae60; }
-        body { font-family: 'Helvetica', sans-serif; background: #f4f4f4; padding: 20px; margin: 0; }
-        .header-fixed { background: var(--dark); color: white; padding: 20px; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
-        .summary-box { text-align: right; }
-        .summary-box div { font-size: 12px; color: #aaa; text-transform: uppercase; }
-        .summary-box span { font-size: 24px; color: var(--gold); font-weight: bold; }
-        .container { padding: 20px; }
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        input[type="file"] { background: white; padding: 10px; border: 1px solid #ddd; }
-        button { padding: 10px 15px; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; transition: 0.3s; }
-        .btn-pdf { background: var(--gold); color: white; }
-        .btn-excel { background: var(--accent); color: white; }
-        table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 85px; z-index: 90; }
-        td { border: 1px solid #eee; padding: 8px; }
-        /* Jerarquías detectadas en tu archivo */
-        .row-semana { background: #333 !important; color: var(--gold) !important; font-weight: bold; font-size: 14px; }
-        .row-partida { background: #f8f8f8; font-weight: bold; color: #444; border-left: 4px solid var(--gold); }
-        .col-edit { background: #fffde7; font-weight: bold; color: #000; }
-        .col-resaltada { font-weight: bold; color: var(--accent); text-align: right; }
-        tr:hover { background: #fdfdfd; }
-    </style>
-</head>
-<body>
+let yaDividido = false; // Bandera para asegurar la división única
 
-<div class="header-fixed">
-    <div>
-        <strong style="letter-spacing: 1px;">ARQ. DAVID LINDORO JUÁREZ</strong><br>
-        <small>Consultoría Técnica: Casa Nubia - Múnich Residencial</small>
-    </div>
-    <div class="summary-box">
-        <div>Inversión Total Acumulada (Semanas 1-13)</div>
-        <span id="total-global">$0.00</span>
-    </div>
-</div>
+function procesarYRenderizar() {
+    if (datosObra.length === 0) return;
 
-<div class="container">
-    <div class="controls">
-        <input type="file" id="upload-excel" accept=".xlsx, .csv" />
-        <button class="btn-pdf" onclick="generarPDF()">Descargar Reporte PDF</button>
-        <button class="btn-excel" onclick="exportarExcel()">Guardar Cambios Excel</button>
-        <small style="color: #666;">* Haz clic en Cantidad o Costo para editar.</small>
-    </div>
+    let html = '<table id="main-table"><thead><tr>';
+    const encabezados = ["Código", "Descripción", "Unidad", "Cant. Individual", "Costo Unit. (E)", "Importe (F)"];
+    encabezados.forEach(h => html += `<th>${h}</th>`);
+    html += '</tr></thead><tbody>';
 
-    <div id="tabla-presupuesto"></div>
-</div>
+    let acumuladoTotalIndividual = 0;
 
-<script>
-    let datosObra = [];
-
-    document.getElementById('upload-excel').addEventListener('change', function(e) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            // Convertimos todo el archivo a matriz para no perder filas de la semana 13
-            datosObra = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
-            procesarYRenderizar();
-        };
-        reader.readAsArrayBuffer(e.target.files[0]);
-    });
-
-    function procesarYRenderizar() {
-        if (datosObra.length === 0) return;
-
-        let html = '<table id="main-table"><thead><tr>';
-        const encabezados = ["Código", "Descripción", "Unidad", "Cant.", "Costo (E)", "Importe (F)"];
-        encabezados.forEach(h => html += `<th>${h}</th>`);
-        html += '</tr></thead><tbody>';
-
-        let acumuladoTotal = 0;
-
-        // Empezamos en la fila donde comienzan los datos reales (ajustado a tu archivo)
+    // Procesamos la división solo si no se ha hecho antes para este archivo
+    if (!yaDividido) {
         for (let i = 7; i < datosObra.length; i++) {
-            const fila = datosObra[i];
-            const codigo = String(fila[0] || "");
-            const desc = String(fila[1] || "");
-
-            if (!desc && !codigo) continue; // Saltar vacíos
-
-            // Identificación de filas especiales (Semanas y Partidas)
-            let claseFila = "";
-            if (codigo.match(/^L\d{2}$/)) claseFila = "row-semana"; // Ej: L01, L12, L13
-            else if (codigo.match(/^L\d{3}$/)) claseFila = "row-partida"; // Ej: L011, L121
-
-            html += `<tr class="${claseFila}">`;
+            const codigo = String(datosObra[i][0] || "");
+            const esInsumo = !codigo.match(/^L\d{1,3}$/) && datosObra[i][1] !== ""; 
             
-            for (let j = 0; j < 6; j++) {
-                let valor = fila[j] || "";
-                let esEditable = (j === 3 || j === 4) && claseFila === "" ? 'contenteditable="true" class="col-edit"' : "";
-                let claseCelda = j === 5 ? 'class="col-resaltada"' : "";
+            if (esInsumo && !isNaN(parseFloat(datosObra[i][3]))) {
+                // DIVISIÓN ÚNICA: Cantidad original / 4
+                datosObra[i][3] = (parseFloat(datosObra[i][3]) / 4).toFixed(4);
                 
-                // Formatear si es número en columnas de dinero
-                if ((j === 4 || j === 5) && !isNaN(parseFloat(valor)) && valor !== "") {
-                    valor = parseFloat(valor).toFixed(2);
-                }
-
-                html += `<td ${esEditable} ${claseCelda} onblur="actualizarDato(${i}, ${j}, this)">${valor}</td>`;
-                
-                // Sumar al total solo si es un insumo real (no encabezado de semana)
-                if (j === 5 && claseFila === "" && !isNaN(parseFloat(valor))) {
-                    acumuladoTotal += parseFloat(valor);
-                }
+                // Recalcular Importe de una vez (F = D * E)
+                let cant = parseFloat(datosObra[i][3]);
+                let costo = parseFloat(datosObra[i][4]) || 0;
+                datosObra[i][5] = (cant * costo).toFixed(2);
             }
-            html += '</tr>';
         }
-
-        html += '</tbody></table>';
-        document.getElementById('tabla-presupuesto').innerHTML = html;
-        document.getElementById('total-global').innerText = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(acumuladoTotal);
+        yaDividido = true; // Bloqueamos futuras divisiones automáticas
     }
 
-    function actualizarDato(fila, col, el) {
-        let nuevoValor = parseFloat(el.innerText.replace(/[^0-9.-]+/g,"")) || 0;
-        datosObra[fila][col] = nuevoValor;
+    // Renderizado de la tabla con los valores ya procesados
+    for (let i = 7; i < datosObra.length; i++) {
+        const fila = datosObra[i];
+        const codigo = String(fila[0] || "");
+        if (!fila[1] && !codigo) continue;
 
-        // Recalcular Importe automáticamente (F = D * E)
-        let cantidad = parseFloat(datosObra[fila][3]) || 0;
-        let costo = parseFloat(datosObra[fila][4]) || 0;
-        datosObra[fila][5] = (cantidad * costo).toFixed(2);
+        let claseFila = "";
+        if (codigo.match(/^L\d{2}$/)) claseFila = "row-semana";
+        else if (codigo.match(/^L\d{3}$/)) claseFila = "row-partida";
 
-        procesarYRenderizar(); // Refrescar vista y totales
+        html += `<tr class="${claseFila}">`;
+        for (let j = 0; j < 6; j++) {
+            let valor = fila[j] || "";
+            let esEditable = (j === 3 || j === 4) && claseFila === "" ? 'contenteditable="true" class="col-edit"' : "";
+            let claseCelda = j === 5 ? 'class="col-resaltada"' : "";
+            
+            html += `<td ${esEditable} ${claseCelda} onblur="actualizarDato(${fila}, ${j}, this)">${valor}</td>`;
+            
+            if (j === 5 && claseFila === "" && !isNaN(parseFloat(valor))) {
+                acumuladoTotalIndividual += parseFloat(valor);
+            }
+        }
+        html += '</tr>';
     }
 
-    function generarPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'pt', 'letter');
-        doc.setFontSize(14);
-        doc.text("PRESUPUESTO EJECUTIVO: CASA NUBIA (Semanas 1-13)", 40, 40);
-        doc.setFontSize(10);
-        doc.text("Responsable: Arq. David Lindoro Juárez", 40, 55);
-        doc.autoTable({ html: '#main-table', startY: 70, styles: { fontSize: 7 } });
-        doc.save("Presupuesto_Completo_Casa_Nubia.pdf");
-    }
+    html += '</tbody></table>';
+    document.getElementById('tabla-presupuesto').innerHTML = html;
+    document.getElementById('total-global').innerText = new Intl.NumberFormat('es-MX', { 
+        style: 'currency', currency: 'MXN' 
+    }).format(acumuladoTotalIndividual);
+}
 
-    function exportarExcel() {
-        const ws = XLSX.utils.aoa_to_sheet(datosObra);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Obra_Actualizada");
-        XLSX.writeFile(wb, "Control_Obra_Lindoro_Nubia.xlsx");
-    }
-</script>
-
-</body>
-</html>
+// Al cargar un nuevo archivo, reseteamos la bandera
+document.getElementById('upload-excel').addEventListener('change', function(e) {
+    yaDividido = false; 
+    // ... resto del código de lectura ...
+});
