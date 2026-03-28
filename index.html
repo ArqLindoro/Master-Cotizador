@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Consultoría Técnica | Arq. David Lindoro Juárez</title>
+    <title>Presupuesto 2026 | Arq. David Lindoro Juárez</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -10,24 +10,37 @@
     <style>
         :root { --dark: #1a1a1a; --gold: #c5a059; --accent: #27ae60; --pdf: #e74c3c; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        
+        /* Encabezado Profesional */
         .nav { background: var(--dark); color: white; padding: 15px 30px; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .summary span { font-size: 24px; color: var(--gold); font-weight: bold; }
+
         .container { padding: 25px; max-width: 1500px; margin: auto; }
+
+        /* Panel de Control Visible */
+        .card-controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 2px solid var(--gold); }
         
-        .card-controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .upload-area { flex-grow: 1; background: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px dashed #ccc; }
         
-        .filter-group { background: #eee; padding: 10px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
-        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; cursor: pointer; }
-        
-        button { padding: 12px 18px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; color: white; }
+        .filter-group { background: #f0f0f0; padding: 10px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; border: 1px solid #ddd; }
+        select { padding: 8px; border-radius: 4px; border: 1px solid #333; font-weight: bold; }
+
+        /* Botones de Acción */
+        button { padding: 12px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; color: white; transition: 0.3s; }
         .btn-xls { background: var(--accent); }
         .btn-pdf { background: var(--pdf); }
-        
-        .table-wrapper { background: white; border-radius: 8px; overflow: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-height: 70vh; }
+        button:hover { opacity: 0.8; transform: scale(1.02); }
+
+        /* Tabla de Datos */
+        .table-wrapper { background: white; border-radius: 8px; overflow: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-height: 65vh; margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 0; z-index: 10; }
         td { border: 1px solid #eee; padding: 8px; outline: none; }
-        .row-semana { background: #2c3e50 !important; color: var(--gold) !important; font-weight: bold; }
+        td:focus { background: #fffde7; }
+
+        /* Estilos de Fila */
+        .row-semana { background: #2c3e50 !important; color: var(--gold) !important; font-weight: bold; font-size: 14px; }
+        .row-partida { background: #f8f9fa; font-weight: bold; border-left: 5px solid var(--gold); }
         .row-hidden { display: none; }
         .col-money { text-align: right; font-weight: bold; }
     </style>
@@ -35,17 +48,161 @@
 <body>
 
 <div class="nav">
-    <div><strong>ARQ. DAVID LINDORO JUÁREZ</strong><br><small>Gestión de Obra: Filtro por Periodos 2026</small></div>
-    <div class="summary">Total Vista Actual: <span id="total-global">$0.00</span></div>
+    <div><strong>ARQ. DAVID LINDORO JUÁREZ</strong><br><small>Presupuesto Nubia | Actualización 2026</small></div>
+    <div class="summary">Total Vista: <span id="total-global">$0.00</span></div>
 </div>
 
 <div class="container">
     <div class="card-controls">
-        <input type="file" id="file-input" accept=".xlsx, .csv" style="flex-grow:1" />
+        <div class="upload-area">
+            <strong>1. Seleccionar Archivo:</strong>
+            <input type="file" id="file-input" accept=".xlsx, .csv, .xls" />
+        </div>
         
         <div class="filter-group">
-            <label>Filtrar por:</label>
+            <strong>2. Filtrar:</strong>
             <select id="semana-filter" onchange="aplicarFiltro()">
-                <option value="todas">Ver Todo el Proyecto</option>
+                <option value="todas">PROYECTO COMPLETO</option>
             </select>
         </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-xls" onclick="descargarExcel()">Descargar XLS</button>
+            <button class="btn-pdf" onclick="descargarPDF()">Descargar PDF</button>
+        </div>
+    </div>
+    
+    <div id="contenedor-tabla" class="table-wrapper">
+        <div style="padding: 50px; text-align: center; color: #999;">
+            <p>Esperando archivo de presupuesto para procesar actualización 2026...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let matrixData = [];
+    const FACTOR_INFLACION = 1.085; // +8.5% proyectado
+
+    document.getElementById('file-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            
+            // Convertir a Matriz Pura
+            matrixData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+            
+            actualizarCostos2026();
+            generarOpcionesFiltro();
+            renderizarTabla("todas");
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function actualizarCostos2026() {
+        // Recorrer desde fila 8 (Insumos en Nubia)
+        for (let i = 8; i < matrixData.length; i++) {
+            let costo = parseFloat(matrixData[i][4]);
+            let cant = parseFloat(matrixData[i][3]);
+            if (!isNaN(costo) && costo > 0 && matrixData[i][2] !== "") {
+                matrixData[i][4] = Number((costo * FACTOR_INFLACION).toFixed(2));
+                if (!isNaN(cant)) matrixData[i][5] = Number((cant * matrixData[i][4]).toFixed(2));
+            }
+        }
+    }
+
+    function generarOpcionesFiltro() {
+        const select = document.getElementById('semana-filter');
+        select.innerHTML = '<option value="todas">PROYECTO COMPLETO</option>';
+        
+        matrixData.forEach(fila => {
+            const cod = String(fila[0] || "");
+            const desc = String(fila[1] || "");
+            if (cod.match(/^L\d{2}$/)) { // Semanas L01, L02...
+                let opt = document.createElement('option');
+                opt.value = cod;
+                opt.textContent = desc || cod;
+                select.appendChild(opt);
+            }
+        });
+    }
+
+    function renderizarTabla(filtro) {
+        if (matrixData.length === 0) return;
+        
+        let html = '<table id="miTabla"><thead><tr><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cant.</th><th>Costo 2026</th><th>Importe</th></tr></thead><tbody>';
+        let subtotal = 0;
+        let visible = (filtro === "todas");
+
+        for (let i = 8; i < matrixData.length; i++) {
+            const fila = matrixData[i];
+            const cod = String(fila[0] || "");
+            if (!fila[1] && !cod) continue;
+
+            const esSemana = cod.match(/^L\d{2}$/);
+            if (esSemana) visible = (filtro === "todas" || cod === filtro);
+
+            let clase = esSemana ? "row-semana" : (cod.match(/^L\d{3}$/) ? "row-partida" : "");
+            if (!visible) clase += " row-hidden";
+
+            html += `<tr class="${clase}">`;
+            for (let j = 0; j < 6; j++) {
+                let val = fila[j] || "";
+                let display = (j >= 4 && !isNaN(parseFloat(val))) ? parseFloat(val).toLocaleString('es-MX',{minimumFractionDigits:2}) : val;
+                html += `<td contenteditable="true" onblur="editar(${i},${j},this)" class="${j >= 4 ? 'col-money' : ''}">${display}</td>`;
+                
+                if (j === 5 && visible && !esSemana && !cod.match(/^L\d{3}$/) && !isNaN(parseFloat(val))) {
+                    subtotal += parseFloat(val);
+                }
+            }
+            html += '</tr>';
+        }
+        
+        document.getElementById('total-global').innerText = subtotal.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
+        document.getElementById('contenedor-tabla').innerHTML = html + '</tbody></table>';
+    }
+
+    function aplicarFiltro() {
+        renderizarTabla(document.getElementById('semana-filter').value);
+    }
+
+    function editar(f, c, el) {
+        let txt = el.innerText.trim();
+        if (c >= 3) {
+            let n = parseFloat(txt.replace(/[^0-9.-]+/g, "")) || 0;
+            matrixData[f][c] = n;
+            if (c === 3 || c === 4) {
+                matrixData[f][5] = Number((parseFloat(matrixData[f][3]) * parseFloat(matrixData[f][4])).toFixed(2));
+            }
+        } else {
+            matrixData[f][c] = txt;
+        }
+        aplicarFiltro();
+    }
+
+    function descargarExcel() {
+        if (matrixData.length === 0) return;
+        const ws = XLSX.utils.aoa_to_sheet(matrixData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Presupuesto");
+        XLSX.writeFile(wb, `Presupuesto_Nubia_2026.xls`, { bookType: 'biff8' });
+    }
+
+    function descargarPDF() {
+        if (matrixData.length === 0) return;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'letter');
+        doc.setFontSize(14);
+        doc.text("PRESUPUESTO ACTUALIZADO 2026", 40, 40);
+        doc.setFontSize(10);
+        doc.text("RESPONSABLE: ARQ. DAVID LINDORO JUÁREZ", 40, 55);
+        doc.autoTable({ html: '#miTabla', startY: 70, styles: { fontSize: 7 } });
+        doc.save(`Presupuesto_Nubia_2026.pdf`);
+    }
+</script>
+</body>
+</html>
