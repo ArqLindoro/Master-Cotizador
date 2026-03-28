@@ -2,119 +2,133 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Control Cuádruplex | Arq. David Lindoro</title>
+    <title>Presupuesto Cuádruplex | Arq. David Lindoro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        :root { --dark: #1a1a1a; --gold: #c5a059; }
-        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
-        .header { background: var(--dark); color: white; padding: 20px; border-bottom: 4px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; }
-        .container { padding: 20px; }
-        table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
+        :root { --dark: #1a1a1a; --gold: #c5a059; --accent: #27ae60; }
+        body { font-family: 'Helvetica', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+        .header { background: var(--dark); color: white; padding: 20px; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .total-box { text-align: right; }
+        .total-box span { font-size: 24px; color: var(--gold); font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; font-size: 12px; }
         th { background: #333; color: white; padding: 10px; text-align: left; }
         td { border: 1px solid #ddd; padding: 8px; }
         .row-semana { background: #333 !important; color: var(--gold) !important; font-weight: bold; }
-        .row-partida { background: #f9f9f9; font-weight: bold; }
-        .editable { background: #fffde7; font-weight: bold; }
-        .total-box { font-size: 22px; color: var(--gold); font-weight: bold; }
+        .row-partida { background: #f9f9f9; font-weight: bold; border-left: 4px solid var(--gold); }
+        .col-edit { background: #fffde7; font-weight: bold; cursor: cell; }
+        .col-resaltada { font-weight: bold; color: var(--accent); text-align: right; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div><strong>PROYECTO: CASA NUBIA (Individual)</strong><br>Arq. David Lindoro Juárez</div>
-    <div class="total-box">Total Casa: <span id="total-sum">$0.00</span></div>
+    <div><strong>CASA NUBIA - INDIVIDUAL (1/4)</strong><br>Arq. David Lindoro Juárez</div>
+    <div class="total-box">Total Presupuesto: <br><span id="total-global">$0.00</span></div>
 </div>
 
-<div class="container">
-    <input type="file" id="file-input" accept=".csv, .xlsx" />
-    <p><small>* Las cantidades se dividen entre 4 automáticamente al cargar. Haz clic en Costo para editar.</small></p>
-    <div id="table-output"></div>
+<div style="margin: 20px 0;">
+    <input type="file" id="upload-excel" accept=".xlsx, .csv" />
+    <p><small>* Cantidades divididas entre 4 automáticamente para esquema Cuádruplex.</small></p>
 </div>
+
+<div id="tabla-presupuesto"></div>
 
 <script>
-    let tableData = [];
-    let colIndices = { codigo: 0, desc: 1, unidad: 2, cant: 3, costo: 4, importe: 5 };
+    let datosObra = [];
+    let yaDividido = false;
 
-    document.getElementById('file-input').addEventListener('change', function(e) {
+    document.getElementById('upload-excel').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = function(event) {
             const data = new Uint8Array(event.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const raw = XLSX.utils.sheet_to_json(sheet, {header: 1});
-            
-            procesarArchivo(raw);
+            datosObra = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
+            yaDividido = false; // Resetear bandera para nuevo archivo
+            procesarYRenderizar();
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
-    function procesarArchivo(matrix) {
-        let startRow = 0;
-        // 1. Encontrar la fila de encabezados
-        for(let i=0; i<matrix.length; i++) {
-            if(matrix[i].includes("Código") || matrix[i].includes("Descripción")) {
-                startRow = i + 1;
-                break;
+    function procesarYRenderizar() {
+        if (datosObra.length === 0) return;
+
+        // 1. DIVISIÓN ÚNICA (Solo ocurre una vez al cargar el archivo)
+        if (!yaDividido) {
+            for (let i = 0; i < datosObra.length; i++) {
+                const codigo = String(datosObra[i][0] || "");
+                // Detectamos que es un insumo y no un encabezado (L01, L11, etc)
+                if (i >= 7 && !codigo.match(/^L\d{1,3}$/) && datosObra[i][1] !== "") {
+                    let cantOriginal = parseFloat(datosObra[i][3]) || 0;
+                    let costo = parseFloat(datosObra[i][4]) || 0;
+                    
+                    if (cantOriginal > 0) {
+                        datosObra[i][3] = (cantOriginal / 4).toFixed(4); // Cantidad Individual
+                        datosObra[i][5] = (datosObra[i][3] * costo).toFixed(2); // Importe Individual
+                    }
+                }
             }
+            yaDividido = true;
         }
 
-        // 2. Limpiar y dividir entre 4 (Solo una vez)
-        tableData = matrix.slice(startRow).filter(row => row.length > 0 && row[1]);
-        
-        tableData.forEach(row => {
-            let codigo = String(row[0] || "");
-            // Si es un insumo (no es L01, L12, etc)
-            if(!codigo.match(/^L\d{1,3}$/)) {
-                let cantOriginal = parseFloat(row[3]) || 0;
-                let costoOriginal = parseFloat(row[4]) || 0;
+        // 2. CONSTRUCCIÓN DE LA TABLA
+        let html = '<table><thead><tr>';
+        const encabezados = ["Código", "Descripción", "Unidad", "Cant. Individual", "Costo Unit. (E)", "Importe (F)"];
+        encabezados.forEach(h => html += `<th>${h}</th>`);
+        html += '</tr></thead><tbody>';
+
+        let acumuladoTotal = 0;
+
+        for (let i = 7; i < datosObra.length; i++) {
+            const fila = datosObra[i];
+            const codigo = String(fila[0] || "");
+            if (!fila[1] && !codigo) continue;
+
+            let claseFila = "";
+            if (codigo.match(/^L\d{2}$/)) claseFila = "row-semana";
+            else if (codigo.match(/^L\d{3}$/)) claseFila = "row-partida";
+
+            html += `<tr class="${claseFila}">`;
+            
+            for (let j = 0; j < 6; j++) {
+                let valor = fila[j] || "";
+                let esEditable = (j === 3 || j === 4) && claseFila === "" ? `contenteditable="true" class="col-edit" onblur="actualizarDato(${i}, ${j}, this)"` : "";
+                let claseCelda = j === 5 ? 'class="col-resaltada"' : "";
                 
-                row[3] = (cantOriginal / 4); // División Cuádruplex
-                row[5] = (row[3] * costoOriginal); // Nuevo Importe
-            }
-        });
-
-        render();
-    }
-
-    function render() {
-        let html = '<table><thead><tr><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cant. (1/4)</th><th>Costo Unit.</th><th>Importe</th></tr></thead><tbody>';
-        let grandTotal = 0;
-
-        tableData.forEach((row, index) => {
-            let codigo = String(row[0] || "");
-            let clase = "";
-            if(codigo.match(/^L\d{2}$/)) clase = "row-semana";
-            else if(codigo.match(/^L\d{3}$/)) clase = "row-partida";
-
-            html += `<tr class="${clase}">`;
-            row.slice(0,6).forEach((cell, i) => {
-                let content = cell;
-                let edit = (i === 4 && clase === "") ? `contenteditable="true" class="editable" onblur="update(${index}, ${i}, this)"` : "";
-                
-                // Formato de números
-                if((i === 3 || i === 4 || i === 5) && !isNaN(parseFloat(cell))) {
-                    content = (i === 3) ? parseFloat(cell).toFixed(4) : parseFloat(cell).toLocaleString('es-MX', {minimumFractionDigits: 2});
+                // Formatear números para visualización
+                let displayValue = valor;
+                if ((j === 4 || j === 5) && !isNaN(parseFloat(valor)) && valor !== "") {
+                    displayValue = parseFloat(valor).toLocaleString('es-MX', {minimumFractionDigits: 2});
                 }
 
-                html += `<td ${edit}>${content || ''}</td>`;
-            });
+                html += `<td ${esEditable} ${claseCelda}>${displayValue}</td>`;
+                
+                if (j === 5 && claseFila === "" && !isNaN(parseFloat(valor))) {
+                    acumuladoTotal += parseFloat(valor);
+                }
+            }
             html += '</tr>';
-
-            if(clase === "" && !isNaN(parseFloat(row[5]))) grandTotal += parseFloat(row[5]);
-        });
+        }
 
         html += '</tbody></table>';
-        document.getElementById('table-output').innerHTML = html;
-        document.getElementById('total-sum').innerText = grandTotal.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
+        document.getElementById('tabla-presupuesto').innerHTML = html;
+        document.getElementById('total-global').innerText = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(acumuladoTotal);
     }
 
-    function update(rowIndex, colIndex, el) {
-        let val = parseFloat(el.innerText.replace(/[^0-9.-]+/g,"")) || 0;
-        tableData[rowIndex][colIndex] = val;
-        // Recalcular Importe F = D * E
-        tableData[rowIndex][5] = tableData[rowIndex][3] * tableData[rowIndex][4];
-        render();
+    function actualizarDato(fila, col, el) {
+        // Limpiar formato de moneda antes de guardar
+        let valorLimpio = parseFloat(el.innerText.replace(/[^0-9.-]+/g,"")) || 0;
+        datosObra[fila][col] = valorLimpio;
+
+        // Recalcular Importe (F = D * E)
+        let cant = parseFloat(datosObra[fila][3]) || 0;
+        let costo = parseFloat(datosObra[fila][4]) || 0;
+        datosObra[fila][5] = (cant * costo).toFixed(2);
+
+        // Re-renderizar para actualizar el total global y formatos
+        procesarYRenderizar();
     }
 </script>
+
 </body>
 </html>
