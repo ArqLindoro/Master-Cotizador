@@ -2,179 +2,110 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Consultoría Técnica 2026 | Arq. David Lindoro Juárez</title>
+    <title>Consultoría 2026 | Arq. David Lindoro Juárez</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    
     <style>
         :root { --dark: #1a1a1a; --gold: #c5a059; --accent: #27ae60; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
-        .navbar { background: var(--dark); color: white; padding: 15px 30px; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; align-items: center; sticky: top; z-index: 1000; position: sticky; top: 0; }
-        .brand { line-height: 1.2; }
-        .total-display { text-align: right; }
-        .total-display span { font-size: 24px; color: var(--gold); font-weight: bold; }
-        .main-container { padding: 30px; max-width: 1400px; margin: auto; }
-        .card-controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 30px; display: flex; gap: 15px; align-items: center; }
-        input[type="file"] { border: 1px dashed #ccc; padding: 10px; border-radius: 4px; flex-grow: 1; }
-        button { padding: 12px 24px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s; text-transform: uppercase; }
-        .btn-excel { background: var(--accent); color: white; }
-        .btn-excel:hover { background: #219150; }
-        .btn-pdf { background: var(--gold); color: white; }
-        .table-container { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { background: #333; color: white; padding: 12px; text-align: left; }
-        td { border-bottom: 1px solid #eee; padding: 10px; }
-        .row-semana { background: #2c3e50 !important; color: var(--gold) !important; font-weight: bold; }
-        .row-partida { background: #fdfdfd; font-weight: bold; color: #555; border-left: 5px solid var(--gold); }
-        .col-money { text-align: right; font-family: 'Courier New', monospace; font-weight: bold; }
-        .col-editable { background: #fffde7; color: #b91c1c; cursor: pointer; border: 1px solid #ffe082; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+        .nav { background: var(--dark); color: white; padding: 15px 30px; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .summary span { font-size: 24px; color: var(--gold); font-weight: bold; }
+        .container { padding: 20px; max-width: 1400px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; }
+        button { padding: 12px 25px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        .btn-export { background: var(--accent); color: white; }
+        .btn-export:hover { background: #219150; transform: translateY(-1px); }
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
+        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 80px; }
+        td { border: 1px solid #eee; padding: 8px; }
+        .row-semana { background: #333 !important; color: var(--gold) !important; font-weight: bold; }
+        .col-money { text-align: right; font-weight: bold; }
+        .col-edit { background: #fffde7; color: #b91c1c; }
     </style>
 </head>
 <body>
 
-<div class="navbar">
-    <div class="brand">
-        <strong>ARQ. DAVID LINDORO JUÁREZ</strong><br>
-        <small>Especialista en Arquitectura de Autor | Actualización 2026</small>
-    </div>
-    <div class="total-display">
-        <small>INVERSIÓN PROYECTADA</small><br>
-        <span id="total-global">$0.00</span>
-    </div>
+<div class="nav">
+    <div><strong>ARQ. DAVID LINDORO JUÁREZ</strong><br><small>Consultoría Técnica: Actualización 2026</small></div>
+    <div class="summary">Total Proyectado: <span id="total-global">$0.00</span></div>
 </div>
 
-<div class="main-container">
-    <div class="card-controls">
-        <input type="file" id="input-file" accept=".xlsx, .csv" />
-        <button class="btn-excel" onclick="exportarExcel()">Descargar Excel 2026</button>
-        <button class="btn-pdf" onclick="exportarPDF()">Generar PDF</button>
+<div class="container">
+    <div class="card">
+        <input type="file" id="file-selector" accept=".xlsx, .csv" />
+        <button class="btn-export" onclick="exportarArchivoXLS()">Exportar a Formato .XLS</button>
     </div>
-
-    <div class="table-container" id="contenedor-tabla">
-        <div style="padding: 40px; text-align: center; color: #888;">
-            Cargue el archivo de presupuesto para iniciar la actualización al año 2026.
-        </div>
-    </div>
+    <div id="visualizador"></div>
 </div>
 
 <script>
-    let matrixData = [];
-    const INFLACION_2026 = 1.085; // +8.5%
+    let rawData = [];
+    const FACTOR_2026 = 1.085; // +8.5%
 
-    document.getElementById('input-file').addEventListener('change', function(e) {
+    document.getElementById('file-selector').addEventListener('change', function(e) {
         const file = e.target.files[0];
-        if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheet];
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
             
-            // Convertimos a matriz (Array of Arrays) para manipulación directa
-            matrixData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-            
-            procesarPrecios2026();
-            renderizarInterfaz();
+            // Actualización forzada de precios 2026
+            for (let i = 8; i < rawData.length; i++) {
+                let costo = parseFloat(rawData[i][4]);
+                let cant = parseFloat(rawData[i][3]);
+                if (!isNaN(costo) && costo > 0 && rawData[i][2] !== "") {
+                    rawData[i][4] = Number((costo * FACTOR_2026).toFixed(2));
+                    if (!isNaN(cant)) rawData[i][5] = Number((cant * rawData[i][4]).toFixed(2));
+                }
+            }
+            renderTabla();
         };
         reader.readAsArrayBuffer(file);
     });
 
-    function procesarPrecios2026() {
-        // Empezamos desde la fila 8 según la estructura del archivo
-        for (let i = 8; i < matrixData.length; i++) {
-            let costoOriginal = parseFloat(matrixData[i][4]);
-            let cantidad = parseFloat(matrixData[i][3]);
-            
-            // Si la fila tiene un costo y no es una fila de título (columna unidad tiene texto)
-            if (!isNaN(costoOriginal) && costoOriginal > 0 && matrixData[i][2] !== "") {
-                let nuevoCosto = costoOriginal * INFLACION_2026;
-                matrixData[i][4] = Number(nuevoCosto.toFixed(2));
-                
-                if (!isNaN(cantidad)) {
-                    matrixData[i][5] = Number((cantidad * nuevoCosto).toFixed(2));
-                }
-            }
-        }
-    }
+    function renderTabla() {
+        if (rawData.length === 0) return;
+        let html = '<table><thead><tr><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cant.</th><th>Costo 2026</th><th>Importe</th></tr></thead><tbody>';
+        let total = 0;
 
-    function renderizarInterfaz() {
-        if (matrixData.length === 0) return;
-
-        let html = '<table id="tabla-datos"><thead><tr>';
-        const heads = ["Código", "Descripción", "Unidad", "Cant.", "Costo 2026", "Importe"];
-        heads.forEach(h => html += `<th>${h}</th>`);
-        html += '</tr></thead><tbody>';
-
-        let granTotal = 0;
-
-        for (let i = 8; i < matrixData.length; i++) {
-            const fila = matrixData[i];
+        for (let i = 8; i < rawData.length; i++) {
+            const fila = rawData[i];
             const codigo = String(fila[0] || "");
             if (!fila[1] && !codigo) continue;
 
-            let tipoFila = "";
-            if (codigo.match(/^L\d{2}$/)) tipoFila = "row-semana";
-            else if (codigo.match(/^L\d{3}$/)) tipoFila = "row-partida";
-
-            html += `<tr class="${tipoFila}">`;
+            let clase = codigo.match(/^L\d{2,3}$/) ? (codigo.length === 3 ? "row-semana" : "row-partida") : "";
+            html += `<tr class="${clase}">`;
             for (let j = 0; j < 6; j++) {
                 let val = fila[j] || "";
-                let editable = (j === 4 && tipoFila === "") ? `contenteditable="true" class="col-editable" onblur="editarCosto(${i}, this)"` : "";
-                let claseExtra = (j >= 4) ? "col-money" : "";
-                
-                let textoFinal = val;
-                if ((j === 4 || j === 5) && !isNaN(parseFloat(val))) {
-                    textoFinal = parseFloat(val).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                }
-
-                html += `<td ${editable} class="${claseExtra}">${textoFinal}</td>`;
-                if (j === 5 && tipoFila === "" && !isNaN(parseFloat(val))) granTotal += parseFloat(val);
+                let display = (j >= 4 && !isNaN(parseFloat(val))) ? parseFloat(val).toLocaleString('es-MX', {minimumFractionDigits:2}) : val;
+                html += `<td class="${j >= 4 ? 'col-money' : ''} ${j === 4 && clase === '' ? 'col-edit' : ''}">${display}</td>`;
+                if (j === 5 && clase === "" && !isNaN(parseFloat(val))) total += parseFloat(val);
             }
             html += '</tr>';
         }
-
-        html += '</tbody></table>';
-        document.getElementById('contenedor-tabla').innerHTML = html;
-        document.getElementById('total-global').innerText = granTotal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+        document.getElementById('visualizador').innerHTML = html + '</tbody></table>';
+        document.getElementById('total-global').innerText = total.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
     }
 
-    function editarCosto(index, el) {
-        let nuevoVal = parseFloat(el.innerText.replace(/[^0-9.-]+/g, "")) || 0;
-        matrixData[index][4] = nuevoVal;
-        matrixData[index][5] = Number((matrixData[index][3] * nuevoVal).toFixed(2));
-        renderizarInterfaz();
-    }
+    // FUNCIÓN DE EXPORTACIÓN CORREGIDA A .XLS
+    function exportarArchivoXLS() {
+        if (rawData.length === 0) { alert("Cargue un archivo primero."); return; }
 
-    function exportarExcel() {
-        if (matrixData.length === 0) return alert("Cargue un archivo primero.");
-        
-        // Crear el libro y la hoja
-        const ws = XLSX.utils.aoa_to_sheet(matrixData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Presupuesto 2026");
-        
-        // Descarga forzada
-        XLSX.writeFile(wb, "Presupuesto_Actualizado_2026.xlsx");
-    }
+        try {
+            // 1. Crear la hoja desde la matriz actualizada
+            const ws = XLSX.utils.aoa_to_sheet(rawData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Presupuesto_2026");
 
-    function exportarPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'pt', 'letter');
-        doc.setFontSize(18);
-        doc.text("PRESUPUESTO EJECUTIVO 2026", 40, 40);
-        doc.setFontSize(10);
-        doc.text("Responsable: Arq. David Lindoro Juárez", 40, 55);
-        
-        doc.autoTable({ 
-            html: '#tabla-datos', 
-            startY: 70,
-            styles: { fontSize: 7 },
-            headStyles: { fillStyle: '#333' }
-        });
-        doc.save("Reporte_Inversion_2026.pdf");
+            // 2. Generar archivo en formato .xls (bookType: 'biff8')
+            // Este formato es el más compatible y abre la ventana de descarga sin bloqueos
+            XLSX.writeFile(wb, "Presupuesto_Consultoria_2026.xls", { bookType: 'biff8' });
+            
+        } catch (error) {
+            console.error(error);
+            alert("Error al exportar. Intente cerrar el archivo si lo tiene abierto en Excel.");
+        }
     }
 </script>
 
