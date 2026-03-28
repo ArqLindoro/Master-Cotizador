@@ -12,143 +12,40 @@
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
         .nav { background: var(--dark); color: white; padding: 15px 30px; border-bottom: 4px solid var(--gold); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .summary span { font-size: 24px; color: var(--gold); font-weight: bold; }
-        .container { padding: 30px; max-width: 1400px; margin: auto; }
-        .card-controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 25px; display: flex; gap: 12px; align-items: center; }
-        button { padding: 12px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; color: white; }
+        .container { padding: 25px; max-width: 1500px; margin: auto; }
+        
+        .card-controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        
+        .filter-group { background: #eee; padding: 10px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
+        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; cursor: pointer; }
+        
+        button { padding: 12px 18px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; color: white; }
         .btn-xls { background: var(--accent); }
         .btn-pdf { background: var(--pdf); }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        
         .table-wrapper { background: white; border-radius: 8px; overflow: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-height: 70vh; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 0; }
-        td { border-bottom: 1px solid #eee; padding: 8px; }
+        th { background: #333; color: white; padding: 12px; text-align: left; position: sticky; top: 0; z-index: 10; }
+        td { border: 1px solid #eee; padding: 8px; outline: none; }
         .row-semana { background: #2c3e50 !important; color: var(--gold) !important; font-weight: bold; }
+        .row-hidden { display: none; }
         .col-money { text-align: right; font-weight: bold; }
-        .col-edit { background: #fffde7; color: #b91c1c; }
     </style>
 </head>
 <body>
 
 <div class="nav">
-    <div><strong>ARQ. DAVID LINDORO JUÁREZ</strong><br><small>Consultoría Técnica | Proyección 2026</small></div>
-    <div class="summary">Total 2026: <span id="total-global">$0.00</span></div>
+    <div><strong>ARQ. DAVID LINDORO JUÁREZ</strong><br><small>Gestión de Obra: Filtro por Periodos 2026</small></div>
+    <div class="summary">Total Vista Actual: <span id="total-global">$0.00</span></div>
 </div>
 
 <div class="container">
     <div class="card-controls">
         <input type="file" id="file-input" accept=".xlsx, .csv" style="flex-grow:1" />
-        <button class="btn-xls" onclick="forzarDescargaXLS()">Exportar .XLS (Guardar como)</button>
-        <button class="btn-pdf" onclick="exportarPDF()">Descargar PDF</button>
-    </div>
-    <div id="tabla-render" class="table-wrapper"></div>
-</div>
-
-<script>
-    let matrix = [];
-    const AJUSTE_2026 = 1.085; // +8.5% inflacionario
-
-    document.getElementById('file-input').addEventListener('change', function(e) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            matrix = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" });
-            
-            actualizarPreciosMemoria();
-            renderTable();
-        };
-        reader.readAsArrayBuffer(e.target.files[0]);
-    });
-
-    function actualizarPreciosMemoria() {
-        for (let i = 8; i < matrix.length; i++) {
-            let costo = parseFloat(matrix[i][4]);
-            let cant = parseFloat(matrix[i][3]);
-            if (!isNaN(costo) && costo > 0 && matrix[i][2] !== "") {
-                matrix[i][4] = Number((costo * AJUSTE_2026).toFixed(2));
-                if (!isNaN(cant)) matrix[i][5] = Number((cant * matrix[i][4]).toFixed(2));
-            }
-        }
-    }
-
-    function renderTable() {
-        if (matrix.length === 0) return;
-        let html = '<table id="tabla-datos"><thead><tr><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cant.</th><th>Costo 2026</th><th>Importe</th></tr></thead><tbody>';
-        let totalGlobal = 0;
-
-        for (let i = 8; i < matrix.length; i++) {
-            const fila = matrix[i];
-            if (!fila[1] && !fila[0]) continue;
-            let esCabecera = String(fila[0]).match(/^L\d{2,3}$/);
-            let clase = esCabecera ? "row-semana" : "";
-            
-            html += `<tr class="${clase}">`;
-            for (let j = 0; j < 6; j++) {
-                let val = fila[j] || "";
-                let display = (j >= 4 && !isNaN(parseFloat(val))) ? parseFloat(val).toLocaleString('es-MX',{minimumFractionDigits:2}) : val;
-                html += `<td class="${j >= 4 ? 'col-money' : ''} ${j === 4 && !esCabecera ? 'col-edit' : ''}">${display}</td>`;
-                if (j === 5 && !esCabecera && !isNaN(parseFloat(val))) totalGlobal += parseFloat(val);
-            }
-            html += '</tr>';
-        }
-        document.getElementById('total-global').innerText = totalGlobal.toLocaleString('es-MX', {style:'currency', currency:'MXN'});
-        document.getElementById('tabla-render').innerHTML = html + '</tbody></table>';
-    }
-
-    // NUEVA FUNCIÓN: FUERZA LA VENTANA DE "GUARDAR COMO"
-    function forzarDescargaXLS() {
-        if (matrix.length === 0) return alert("Cargue un archivo primero.");
-
-        // 1. Crear el libro y la hoja
-        const ws = XLSX.utils.aoa_to_sheet(matrix);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Presupuesto_2026");
-
-        // 2. Generar el binario del archivo
-        const excelBinario = XLSX.write(wb, { bookType: 'xls', type: 'binary' });
-
-        // 3. Convertir a buffer para el Blob
-        const buffer = new ArrayBuffer(excelBinario.length);
-        const view = new Uint8Array(buffer);
-        for (let i = 0; i < excelBinario.length; i++) {
-            view[i] = excelBinario.charCodeAt(i) & 0xFF;
-        }
-
-        // 4. Crear el Blob y el enlace de descarga forzada
-        const blob = new Blob([buffer], { type: 'application/vnd.ms-excel' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
         
-        const stamp = new Date().getTime().toString().slice(-4);
-        a.href = url;
-        a.download = `Presupuesto_2026_${stamp}.xls`;
-        
-        // 5. Simular el clic y limpiar
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }, 0);
-    }
-
-    function exportarPDF() {
-        if (matrix.length === 0) return alert("Cargue un archivo.");
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'pt', 'letter');
-        doc.setFontSize(16);
-        doc.text("PRESUPUESTO ACTUALIZADO 2026", 40, 40);
-        doc.setFontSize(10);
-        doc.text("ARQ. DAVID LINDORO JUÁREZ", 40, 55);
-        doc.autoTable({
-            html: '#tabla-datos',
-            startY: 70,
-            theme: 'striped',
-            headStyles: { fillStyle: '#333', fontSize: 8 },
-            styles: { fontSize: 7 }
-        });
-        doc.save(`Reporte_2026.pdf`);
-    }
-</script>
-</body>
-</html>
+        <div class="filter-group">
+            <label>Filtrar por:</label>
+            <select id="semana-filter" onchange="aplicarFiltro()">
+                <option value="todas">Ver Todo el Proyecto</option>
+            </select>
+        </div>
