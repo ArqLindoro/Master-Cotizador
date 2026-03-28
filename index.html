@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Control de Obra Casa Nubia | Arq. David Lindoro</title>
+    <title>Consultoría Técnica | Arq. David Lindoro Juárez</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -32,10 +32,10 @@
 <div class="header-fixed">
     <div>
         <strong>ARQ. DAVID LINDORO JUÁREZ</strong><br>
-        <small>Consultoría Técnica: Casa Nubia - Múnich Residencial</small>
+        <small>Consultoría Técnica: Gestión de Obra y Presupuesto de Autor</small>
     </div>
     <div class="summary-box">
-        <div>Inversión Total Acumulada</div>
+        <div>Inversión Total Proyectada</div>
         <span id="total-global">$0.00</span>
     </div>
 </div>
@@ -74,7 +74,6 @@
 
         let acumuladoTotal = 0;
 
-        // Iniciamos en la fila donde detectamos los datos reales
         for (let i = 7; i < datosObra.length; i++) {
             const fila = datosObra[i];
             const codigo = String(fila[0] || "");
@@ -83,7 +82,6 @@
             if (!desc && !codigo) continue;
 
             let claseFila = "";
-            // Detección de Semanas (L01, L12, L13) y Partidas (L011, etc)
             if (codigo.match(/^L\d{2}$/)) claseFila = "row-semana";
             else if (codigo.match(/^L\d{3}$/)) claseFila = "row-partida";
 
@@ -110,4 +108,36 @@
 
         html += '</tbody></table>';
         document.getElementById('tabla-presupuesto').innerHTML = html;
-        document.getElementById('total-global').innerText = new Intl.Number
+        document.getElementById('total-global').innerText = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(acumuladoTotal);
+    }
+
+    function actualizarDato(fila, col, el) {
+        let nuevoValor = parseFloat(el.innerText.replace(/[^0-9.-]+/g,"")) || 0;
+        datosObra[fila][col] = nuevoValor;
+
+        let cantidad = parseFloat(datosObra[fila][3]) || 0;
+        let costo = parseFloat(datosObra[fila][4]) || 0;
+        datosObra[fila][5] = (cantidad * costo).toFixed(2);
+
+        procesarYRenderizar();
+    }
+
+    function generarPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'letter');
+        doc.text("PRESUPUESTO EJECUTIVO DE OBRA", 40, 40);
+        doc.setFontSize(10);
+        doc.text("Responsable: Arq. David Lindoro Juárez", 40, 55);
+        doc.autoTable({ html: '#main-table', startY: 70, styles: { fontSize: 7 } });
+        doc.save("Presupuesto_Consultoria_Lindoro.pdf");
+    }
+
+    function exportarExcel() {
+        const ws = XLSX.utils.aoa_to_sheet(datosObra);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Obra");
+        XLSX.writeFile(wb, "Control_Obra_Consultoria.xlsx");
+    }
+</script>
+</body>
+</html>
